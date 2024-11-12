@@ -10,6 +10,7 @@ export type Image = {
 export type Actions = {
     panning: boolean;
     dragging: boolean;
+    resizing: boolean;
 };
 
 export type Controls = {

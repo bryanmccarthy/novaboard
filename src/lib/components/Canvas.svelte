@@ -10,7 +10,7 @@
 
     let images: Image[] = [];
 
-    let actions: Actions = { panning: false, dragging: false };
+    let actions: Actions = { panning: false, dragging: false, resizing: false };
     let draggingOffset = { x: 0, y: 0 };
 
     let cursorStyle: string;
@@ -18,6 +18,9 @@
 
     let controlsState: Controls;
     controls.subscribe(value => controlsState = value);
+
+    let resizeHandle: string | null = null;
+    const resizeRadius = 6;
 
     onMount(() => {
         ctx = canvas.getContext('2d');
@@ -47,12 +50,48 @@
     // ------------------------------
 
     const handleMouseDown = (event: MouseEvent) => {
+        // check for image panning
         if (controlsState.pan) {
             cursor.update(() => "cursor-grabbing");
-            actions = { panning: true, dragging: false };
+            actions = { panning: true, dragging: false, resizing: false };
             return;
         }
 
+        // check for image resize
+        if (selectedIndex !== null) {
+            const image = images[selectedIndex];
+            if (
+                event.clientX >= image.x - resizeRadius && event.clientX <= image.x + resizeRadius &&
+                event.clientY >= image.y - resizeRadius && event.clientY <= image.y + resizeRadius
+            ) {
+                actions = { panning: false, dragging: false, resizing: true };
+                resizeHandle = "nw";
+                return;
+            } else if (
+                event.clientX >= image.x + image.width - resizeRadius && event.clientX <= image.x + image.width + resizeRadius &&
+                event.clientY >= image.y - resizeRadius && event.clientY <= image.y + resizeRadius
+            ) {
+                actions = { panning: false, dragging: false, resizing: true };
+                resizeHandle = "ne";
+                return;
+            } else if (
+                event.clientX >= image.x - resizeRadius && event.clientX <= image.x + resizeRadius &&
+                event.clientY >= image.y + image.height - resizeRadius && event.clientY <= image.y + image.height + resizeRadius
+            ) {
+                actions = { panning: false, dragging: false, resizing: true };
+                resizeHandle = "sw";
+                return;
+            } else if (
+                event.clientX >= image.x + image.width - resizeRadius && event.clientX <= image.x + image.width + resizeRadius &&
+                event.clientY >= image.y + image.height - resizeRadius && event.clientY <= image.y + image.height + resizeRadius
+            ) {
+                actions = { panning: false, dragging: false, resizing: true };
+                resizeHandle = "se";
+                return;
+            }
+        }
+
+        // check for image drag
         let found = false;
         for (let i = images.length - 1; i >= 0; i--) {
             const image = images[i];
@@ -64,8 +103,9 @@
             ) {
                 found = true;
                 selectedIndex = i;
-                actions = { panning: false, dragging: true };
+                actions = { panning: false, dragging: true, resizing: false };
                 draggingOffset = { x: event.clientX - image.x, y: event.clientY - image.y };
+                break;
             }
         }
 
@@ -93,13 +133,102 @@
             };
             images = updatedImages;
         }
+
+        if (actions.resizing) {
+            if (selectedIndex === null || resizeHandle === null) return;
+            const image = images[selectedIndex];
+            const updatedImages = [...images];
+            switch (resizeHandle) {
+                case "nw":
+                    updatedImages[selectedIndex] = {
+                        ...image,
+                        x: event.clientX,
+                        y: event.clientY,
+                        width: image.x + image.width - event.clientX,
+                        height: image.y + image.height - event.clientY
+                    };
+                    break;
+                case "ne":
+                    updatedImages[selectedIndex] = {
+                        ...image,
+                        y: event.clientY,
+                        width: event.clientX - image.x,
+                        height: image.y + image.height - event.clientY
+                    };
+                    break;
+                case "sw":
+                    updatedImages[selectedIndex] = {
+                        ...image,
+                        x: event.clientX,
+                        width: image.x + image.width - event.clientX,
+                        height: event.clientY - image.y
+                    };
+                    break;
+                case "se":
+                    updatedImages[selectedIndex] = {
+                        ...image,
+                        width: event.clientX - image.x,
+                        height: event.clientY - image.y
+                    };
+                    break;
+            }
+            images = updatedImages;
+        }
+
+        // if mouse is over a resize handle, change cursor
+        if (selectedIndex !== null && !controlsState.pan) {
+            const image = images[selectedIndex];
+            if (
+                event.clientX >= image.x - resizeRadius && event.clientX <= image.x + resizeRadius &&
+                event.clientY >= image.y - resizeRadius && event.clientY <= image.y + resizeRadius
+            ) {
+                cursor.update(() => "cursor-nwse-resize");
+            } else if (
+                event.clientX >= image.x + image.width - resizeRadius && event.clientX <= image.x + image.width + resizeRadius &&
+                event.clientY >= image.y - resizeRadius && event.clientY <= image.y + resizeRadius
+            ) {
+                cursor.update(() => "cursor-nesw-resize");
+            } else if (
+                event.clientX >= image.x - resizeRadius && event.clientX <= image.x + resizeRadius &&
+                event.clientY >= image.y + image.height - resizeRadius && event.clientY <= image.y + image.height + resizeRadius
+            ) {
+                cursor.update(() => "cursor-nesw-resize");
+            } else if (
+                event.clientX >= image.x + image.width - resizeRadius && event.clientX <= image.x + image.width + resizeRadius &&
+                event.clientY >= image.y + image.height - resizeRadius && event.clientY <= image.y + image.height + resizeRadius
+            ) {
+                cursor.update(() => "cursor-nwse-resize");
+            } else {
+                cursor.update(() => "cursor-default");
+            }
+        }
     }
 
     const handleMouseUp = (event: MouseEvent) => {
         if (controlsState.pan) {
             cursor.update(() => "cursor-grab");
         }
-        actions = { panning: false, dragging: false };
+        if (actions.resizing) {
+            // fix negative width/height
+            if (selectedIndex !== null) {
+                const updatedImages = [...images];
+                updatedImages.map((img, i) => {
+                    if (i === selectedIndex) {
+                        if (img.width < 0) { // TODO: maybe also handle flipping image
+                            img.x += img.width;
+                            img.width = Math.abs(img.width);
+                        }
+                        if (img.height < 0) {
+                            img.y += img.height;
+                            img.height = Math.abs(img.height);
+                        }
+                    }
+                    return img;
+                });
+                images = updatedImages;
+            }
+        }
+        actions = { panning: false, dragging: false, resizing: false };
     }
 
     const handleSize = () => {
@@ -128,8 +257,8 @@
                     img: img,
                     x: 50,
                     y: 50,
-                    width: img.width,
-                    height: img.height
+                    width: img.width/2,
+                    height: img.height/2
                 }
                 images.push(newImage);
             }
@@ -147,12 +276,27 @@
             ctx?.drawImage(image.img, image.x, image.y, image.width, image.height);
         });
 
-        // draw selection box
         if (selectedIndex !== null) {
+            // draw selection box
             const image = images[selectedIndex];
-            ctx.strokeStyle = '#4f46e5';
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#6366f1';
+            ctx.lineWidth = 2;
             ctx.strokeRect(image.x, image.y, image.width, image.height);
+            // draw resize handles
+            const handleSize = 4;
+            ctx.fillStyle = '#4f46e5';
+            ctx.beginPath();
+            ctx.arc(image.x, image.y, handleSize, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(image.x + image.width, image.y, handleSize, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(image.x, image.y + image.height, handleSize, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(image.x + image.width, image.y + image.height, handleSize, 0, 2 * Math.PI);
+            ctx.fill();
         }
 
         requestAnimationFrame(draw);
