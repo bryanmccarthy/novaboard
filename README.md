@@ -1,5 +1,8 @@
 # novaboard
 
+## icons
+https://lucide.dev/icons/
+
 ## TODO
 - [ ] Drop image file
 - [ ] Paste image using clipboard

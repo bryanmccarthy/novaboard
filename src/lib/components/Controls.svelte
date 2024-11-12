@@ -1,27 +1,44 @@
 <script lang="ts">
-    import { canvasState } from '../store';
-    import type { CanvasState } from '../types';
+    import { cursor, controls } from '../store';
+    import type { Controls } from '../types';
 
-    let state: CanvasState;
-    canvasState.subscribe(value => state = value);
+    let c: string;
+    cursor.subscribe(value => c = value);
 
-    // TODO: add a hot key for panning (hold + drag)
+    let controlsState: Controls;
+    controls.subscribe(value => controlsState = value);
+
+    const toggleDrag = () => {
+        if (!controlsState.drag) {
+            cursor.update(() => "cursor-default");
+            controls.update(() => ({ drag: true, pan: false }));
+        }
+    }
+
     const togglePan = () => {
-        canvasState.update((s) => {
-            s.panToggle = !s.panToggle;
-            return s;
-        });
+        if (controlsState.pan) {
+            cursor.update(() => "cursor-default");
+            controls.update(() => ({ drag: false, pan: false }));
+        } else {
+            cursor.update(() => "cursor-grab");
+            controls.update(() => ({ drag: false, pan: true }));
+        }
     }
 </script>
 
 <main class="absolute bottom-0 left-1/2 flex justify-center items-center border-2 border-black bg-black m-4 rounded-full">
+    <button
+        class={ controlsState.drag? "bg-white p-1.5 rounded-full" : "bg-black text-white p-1.5 rounded-full" }
+        onclick={() => toggleDrag()}
+        aria-label="Toggle Drag"
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mouse-pointer-2"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/></svg>
+    </button>
     <button 
-        class={ state.panToggle ? "bg-white p-1.5 rounded-full" : "bg-black text-white p-1.5 rounded-full" }
+        class={ controlsState.pan? "bg-white p-1.5 rounded-full" : "bg-black text-white p-1.5 rounded-full" }
         onclick={() => togglePan()}
         aria-label="Toggle Pan"
     >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.05 4.575a1.575 1.575 0 1 0-3.15 0v3m3.15-3v-1.5a1.575 1.575 0 0 1 3.15 0v1.5m-3.15 0 .075 5.925m3.075.75V4.575m0 0a1.575 1.575 0 0 1 3.15 0V15M6.9 7.575a1.575 1.575 0 1 0-3.15 0v8.175a6.75 6.75 0 0 0 6.75 6.75h2.018a5.25 5.25 0 0 0 3.712-1.538l1.732-1.732a5.25 5.25 0 0 0 1.538-3.712l.003-2.024a.668.668 0 0 1 .198-.471 1.575 1.575 0 1 0-2.228-2.228 3.818 3.818 0 0 0-1.12 2.687M6.9 7.575V12m6.27 4.318A4.49 4.49 0 0 1 16.35 15m.002 0h-.002" />
-        </svg> 
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hand"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>    
     </button>
 </main>

@@ -1,12 +1,9 @@
 import { writable } from 'svelte/store';
-import type { CanvasState } from './types';
+import type { Controls, Actions } from './types';
 
-export const canvasState = writable<CanvasState>({
-    images: [],
-    selectedIndex: null,
-    cursor: 'default',
-    panToggle: false,
-    isPanning: false,
-    isDragging: false,
-    draggingOffset: { x: 0, y: 0 },
+export const cursor = writable<string>('default');
+
+export const controls = writable<Controls>({
+    drag: true,
+    pan: false,
 });

@@ -1,14 +1,24 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { canvasState } from '../store';
-    import type { CanvasState, Image } from '../types';
+    import { cursor, controls } from '../store';
+    import type { Image, Actions, Controls } from '../types';
 
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D | null;
 
-    let state: CanvasState;
-    canvasState.subscribe(value => state = value);
-    
+    let selectedIndex: number | null = null;
+
+    let images: Image[] = [];
+
+    let actions: Actions = { panning: false, dragging: false };
+    let draggingOffset = { x: 0, y: 0 };
+
+    let cursorStyle: string;
+    cursor.subscribe(value => cursorStyle = value);
+
+    let controlsState: Controls;
+    controls.subscribe(value => controlsState = value);
+
     onMount(() => {
         ctx = canvas.getContext('2d');
         if (!ctx) {
@@ -32,70 +42,64 @@
             width: testImg.width/4,
             height: testImg.height/4
         }
-        canvasState.update((state: CanvasState) => {
-            state.images.push(newImage);
-            return state;
-        });
+        images.push(newImage);
     }
     // ------------------------------
 
     const handleMouseDown = (event: MouseEvent) => {
-        canvasState.update(s => {
-            if (s.panToggle) {
-                return { ...s, isPanning: true };
-            }
+        if (controlsState.pan) {
+            cursor.update(() => "cursor-grabbing");
+            actions = { panning: true, dragging: false };
+            return;
+        }
 
-            let found = false;
-            for (let i = s.images.length - 1; i >= 0; i--) {
-                const image = s.images[i];
-                if (
-                    event.clientX >= image.x &&
-                    event.clientX <= image.x + image.width &&
-                    event.clientY >= image.y &&
-                    event.clientY <= image.y + image.height
-                ) {
-                    found = true;
-                    return {
-                        ...s,
-                        selectedIndex: i,
-                        isDragging: true,
-                        draggingOffset: { x: event.clientX - image.x, y: event.clientY - image.y }
-                    };
-                }
+        let found = false;
+        for (let i = images.length - 1; i >= 0; i--) {
+            const image = images[i];
+            if (
+                event.clientX >= image.x &&
+                event.clientX <= image.x + image.width &&
+                event.clientY >= image.y &&
+                event.clientY <= image.y + image.height
+            ) {
+                found = true;
+                selectedIndex = i;
+                actions = { panning: false, dragging: true };
+                draggingOffset = { x: event.clientX - image.x, y: event.clientY - image.y };
             }
-            return { ...s, selectedIndex: null, isDragging: false };
-        }); 
+        }
+
+        if (!found) {
+            selectedIndex = null;
+        }
     }
 
     const handleMouseMove = (event: MouseEvent) => {
-        canvasState.update(s => {
-            if (s.isPanning) {
-                return {
-                    ...s,
-                    cursor: 'cursor-grabbing',
-                    images: s.images.map(img => ({
-                        ...img,
-                        x: img.x + event.movementX,
-                        y: img.y + event.movementY
-                    }))
-                };
-            }
-            if (s.selectedIndex !== null && s.isDragging) {
-                const image = s.images[s.selectedIndex];
-                const updatedImages = [...s.images];
-                updatedImages[s.selectedIndex] = {
-                    ...image,
-                    x: event.clientX - s.draggingOffset.x,
-                    y: event.clientY - s.draggingOffset.y
-                };
-                return { ...s, images: updatedImages };
-            }
-            return s;
-        }); 
+        if (actions.panning) {
+            images.map(img => {
+                img.x += event.movementX;
+                img.y += event.movementY;
+            });
+        }
+
+        if (actions.dragging) {
+            if (selectedIndex === null) return;
+            const image = images[selectedIndex];
+            const updatedImages = [...images];
+            updatedImages[selectedIndex] = {
+                ...image,
+                x: event.clientX - draggingOffset.x,
+                y: event.clientY - draggingOffset.y
+            };
+            images = updatedImages;
+        }
     }
 
     const handleMouseUp = (event: MouseEvent) => {
-        canvasState.update(s => ({ ...s, cursor: s.isPanning ? 'cursor-grab' : 'default', isPanning: false, isDragging: false }));
+        if (controlsState.pan) {
+            cursor.update(() => "cursor-grab");
+        }
+        actions = { panning: false, dragging: false };
     }
 
     const handleSize = () => {
@@ -127,7 +131,7 @@
                     width: img.width,
                     height: img.height
                 }
-                canvasState.update(s => ({ ...s, images: [...s.images, newImage] }));
+                images.push(newImage);
             }
         }
         reader.readAsDataURL(file);
@@ -139,13 +143,13 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // draw images
-        state.images.forEach(image => {
+        images.forEach(image => {
             ctx?.drawImage(image.img, image.x, image.y, image.width, image.height);
         });
 
         // draw selection box
-        if (state.selectedIndex !== null) {
-            const image = state.images[state.selectedIndex];
+        if (selectedIndex !== null) {
+            const image = images[selectedIndex];
             ctx.strokeStyle = '#4f46e5';
             ctx.lineWidth = 1;
             ctx.strokeRect(image.x, image.y, image.width, image.height);
@@ -158,7 +162,7 @@
 <svelte:window on:resize={handleSize} />
 
 <canvas
-    class="relative bg-neutral-50 {state.cursor}"
+    class="relative bg-neutral-50 {cursorStyle}"
     id="canvas" 
     bind:this={canvas}
     onmousemove={handleMouseMove}

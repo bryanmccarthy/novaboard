@@ -7,12 +7,12 @@ export type Image = {
     height: number;
 };
 
-export type CanvasState = {
-    images: Image[];
-    selectedIndex: number | null;
-    cursor: string;
-    panToggle: boolean;
-    isPanning: boolean;
-    isDragging: boolean;
-    draggingOffset: { x: number; y: number };
+export type Actions = {
+    panning: boolean;
+    dragging: boolean;
 };
+
+export type Controls = {
+    drag: boolean;
+    pan: boolean;
+}
