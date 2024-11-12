@@ -1,10 +1,14 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import type { State, Image } from '../types';
+    import { canvasState } from '../store';
+    import type { CanvasState, Image } from '../types';
 
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D | null;
 
+    let state: CanvasState;
+    canvasState.subscribe(value => state = value);
+    
     onMount(() => {
         ctx = canvas.getContext('2d');
         if (!ctx) {
@@ -14,79 +18,120 @@
         handleSize();
     });
 
-    // temporary state 
-    const state: State = {
-        images: [],
-        selectedIndex: null,
-        isDragging: false,
-        draggingOffset: { x: 0, y: 0 },
-    } 
-
     // ------------------------------
     // TODO: remove test image
-    const img = new Image();
-    img.src = "src/assets/lain.png";
+    const testImg = new Image();
+    testImg.src = "src/assets/lain.png";
 
-    img.onload = () => {
+    testImg.onload = () => {
         const newImage: Image = {
-            src: img.src,
+            src: testImg.src,
+            img: testImg,
             x: 50,
             y: 50,
-            width: img.width/4,
-            height: img.height/4
+            width: testImg.width/4,
+            height: testImg.height/4
         }
-        state.images.push(newImage);
+        canvasState.update((state: CanvasState) => {
+            state.images.push(newImage);
+            return state;
+        });
     }
     // ------------------------------
 
     const handleMouseDown = (event: MouseEvent) => {
-        let found = false;
-        for (let i = state.images.length - 1; i >= 0; i--) {
-            const image = state.images[i];
-            if (
-                event.clientX >= image.x &&
-                event.clientX <= image.x + image.width &&
-                event.clientY >= image.y &&
-                event.clientY <= image.y + image.height
-            ) {
-                state.selectedIndex = i;
-                state.isDragging = true;
-                state.draggingOffset = {
-                    x: event.clientX - image.x,
-                    y: event.clientY - image.y
-                };
-                found = true;
-                break;
+        canvasState.update(s => {
+            if (s.panToggle) {
+                return { ...s, isPanning: true };
             }
-        }
 
-        if (!found) {
-            state.selectedIndex = null;
-            state.isDragging = false;
-        }
-
-        // console.log("selected index: ", state.selectedIndex);
+            let found = false;
+            for (let i = s.images.length - 1; i >= 0; i--) {
+                const image = s.images[i];
+                if (
+                    event.clientX >= image.x &&
+                    event.clientX <= image.x + image.width &&
+                    event.clientY >= image.y &&
+                    event.clientY <= image.y + image.height
+                ) {
+                    found = true;
+                    return {
+                        ...s,
+                        selectedIndex: i,
+                        isDragging: true,
+                        draggingOffset: { x: event.clientX - image.x, y: event.clientY - image.y }
+                    };
+                }
+            }
+            return { ...s, selectedIndex: null, isDragging: false };
+        }); 
     }
 
     const handleMouseMove = (event: MouseEvent) => {
-        if (state.selectedIndex !== null && state.isDragging) {
-            const image = state.images[state.selectedIndex];
-            image.x = event.clientX - state.draggingOffset.x;
-            image.y = event.clientY - state.draggingOffset.y;
-        }
-
-        // console.log("x: ", event.clientX, "y: ", event.clientY);
+        canvasState.update(s => {
+            if (s.isPanning) {
+                return {
+                    ...s,
+                    cursor: 'cursor-grabbing',
+                    images: s.images.map(img => ({
+                        ...img,
+                        x: img.x + event.movementX,
+                        y: img.y + event.movementY
+                    }))
+                };
+            }
+            if (s.selectedIndex !== null && s.isDragging) {
+                const image = s.images[s.selectedIndex];
+                const updatedImages = [...s.images];
+                updatedImages[s.selectedIndex] = {
+                    ...image,
+                    x: event.clientX - s.draggingOffset.x,
+                    y: event.clientY - s.draggingOffset.y
+                };
+                return { ...s, images: updatedImages };
+            }
+            return s;
+        }); 
     }
 
     const handleMouseUp = (event: MouseEvent) => {
-        state.isDragging = false;
+        canvasState.update(s => ({ ...s, cursor: s.isPanning ? 'cursor-grab' : 'default', isPanning: false, isDragging: false }));
     }
 
     const handleSize = () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         draw();
-    }   
+    } 
+
+    const handleDragOver = (event: DragEvent) => {
+        event.preventDefault();
+    }
+
+    const handleDrop = (event: DragEvent) => {
+        event.preventDefault();
+        const files = event.dataTransfer?.files;
+        if (files === undefined || files?.length === 0) return;
+
+        const file = files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target?.result as string;
+            img.onload = () => {
+                const newImage: Image = {
+                    src: img.src,
+                    img: img,
+                    x: 50,
+                    y: 50,
+                    width: img.width,
+                    height: img.height
+                }
+                canvasState.update(s => ({ ...s, images: [...s.images, newImage] }));
+            }
+        }
+        reader.readAsDataURL(file);
+    }
     
     const draw = () => {
         if (!ctx) return;
@@ -95,7 +140,7 @@
 
         // draw images
         state.images.forEach(image => {
-            ctx?.drawImage(img, image.x, image.y, image.width, image.height);
+            ctx?.drawImage(image.img, image.x, image.y, image.width, image.height);
         });
 
         // draw selection box
@@ -113,11 +158,13 @@
 <svelte:window on:resize={handleSize} />
 
 <canvas
-    class="bg-rose-50" 
+    class="relative bg-neutral-50 {state.cursor}"
     id="canvas" 
     bind:this={canvas}
-    on:mousemove={handleMouseMove}
-    on:mousedown={handleMouseDown}
-    on:mouseup={handleMouseUp}
+    onmousemove={handleMouseMove}
+    onmousedown={handleMouseDown}
+    onmouseup={handleMouseUp}
+    ondragover={handleDragOver}
+    ondrop={handleDrop}
 >
 </canvas>
