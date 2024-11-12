@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { cursor, controls, zoom } from '../store';
+    import { cursor, controls, camera, zoom } from '../store';
     import type { Image, Actions, Controls } from '../types';
 
     let canvas: HTMLCanvasElement;
@@ -10,8 +10,11 @@
 
     let images: Image[] = [];
 
+    let cameraState: { x: number, y: number };
+    camera.subscribe(value => cameraState = value);
+
     let actions: Actions = { panning: false, dragging: false, resizing: false };
-    let draggingOffset = { x: 0, y: 0 };
+    let draggingOffset: { x: number, y: number } = { x: 0, y: 0 };
 
     let cursorStyle: string;
     cursor.subscribe(value => cursorStyle = value);
@@ -50,11 +53,26 @@
         }
         images.push(newImage);
     }
+
+    const testImg2 = new Image();
+    testImg2.src = "src/assets/frieren.jpg";
+
+    testImg2.onload = () => {
+        const newImage: Image = {
+            src: testImg2.src,
+            img: testImg2,
+            x: 200,
+            y: 200,
+            width: testImg2.width/2,
+            height: testImg2.height/2
+        }
+        images.push(newImage);
+    }
     // ------------------------------
 
     const handleMouseDown = (event: MouseEvent) => {
-        let canvasX = event.clientX / zoomLevel;
-        let canvasY = event.clientY / zoomLevel;
+        let canvasX = event.clientX / zoomLevel + cameraState.x;
+        let canvasY = event.clientY / zoomLevel + cameraState.y;
 
         // check for image panning
         if (controlsState.pan) {
@@ -121,14 +139,15 @@
     }
 
     const handleMouseMove = (event: MouseEvent) => {
-        let canvasX = event.clientX / zoomLevel;
-        let canvasY = event.clientY / zoomLevel;
+        let canvasX = event.clientX / zoomLevel + cameraState.x;
+        let canvasY = event.clientY / zoomLevel + cameraState.y;
 
         if (actions.panning) {
-            images.map(img => {
-                img.x += event.movementX;
-                img.y += event.movementY;
-            });
+            // images.map(img => {
+            //     img.x += event.movementX;
+            //     img.y += event.movementY;
+            // });
+            camera.update(value => ({ x: value.x - event.movementX, y: value.y - event.movementY }));
         }
 
         if (actions.dragging) {
@@ -279,36 +298,35 @@
         if (!ctx) return;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+
         ctx.save();
         ctx.scale(zoomLevel, zoomLevel);
 
         // draw images
         images.forEach(image => {
-            ctx?.drawImage(image.img, image.x, image.y, image.width, image.height);
+            ctx?.drawImage(image.img, image.x - cameraState.x, image.y - cameraState.y, image.width, image.height);
         });
 
         if (selectedIndex !== null) {
             // draw selection box
             const image = images[selectedIndex];
-            ctx.strokeStyle = '#3b82f6';
+            ctx.strokeStyle = '#4338ca';
             ctx.lineWidth = 2;
-            ctx.strokeRect(image.x, image.y, image.width, image.height);
+            ctx.strokeRect(image.x - cameraState.x, image.y - cameraState.y, image.width, image.height);
             // draw resize handles
-            const handleSize = 4;
-            ctx.fillStyle = '#2563eb';
-            ctx.beginPath();
-            ctx.arc(image.x, image.y, handleSize, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(image.x + image.width, image.y, handleSize, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(image.x, image.y + image.height, handleSize, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(image.x + image.width, image.y + image.height, handleSize, 0, 2 * Math.PI);
-            ctx.fill();
+            const handleSize = 6;
+            ctx.fillStyle = '#4338ca';
+            ctx.fillRect(image.x - handleSize/2 - cameraState.x, image.y - handleSize/2 - cameraState.y, handleSize, handleSize);
+            ctx.fillRect(image.x + image.width - handleSize/2 - cameraState.x, image.y - handleSize/2 - cameraState.y, handleSize, handleSize);
+            ctx.fillRect(image.x - handleSize/2 - cameraState.x, image.y + image.height - handleSize/2 - cameraState.y, handleSize, handleSize);
+            ctx.fillRect(image.x + image.width - handleSize/2 - cameraState.x, image.y + image.height - handleSize/2 - cameraState.y, handleSize, handleSize);
         }
+
+        // draw (0,0) center point
+        ctx.beginPath();
+        ctx.arc(0 - cameraState.x, 0 - cameraState.y, 5, 0, 2 * Math.PI);
+        ctx.fill();
+
 
         ctx.restore(); // restore scale
         requestAnimationFrame(draw);
@@ -326,5 +344,19 @@
     onmouseup={handleMouseUp}
     ondragover={handleDragOver}
     ondrop={handleDrop}
+    style:--dot-size={zoomLevel <= 0.6 ? '1.6px' : zoomLevel >= 1.3 ? '0.8px' : `${1/zoomLevel}px`}
 >
 </canvas>
+
+<style>
+    #canvas {
+        --dot-bg: #fafafa;
+        --dot-color: #000000;
+        /* --dot-size: 1.5px; */
+        --dot-space: 20px;
+        background:
+        linear-gradient(90deg, var(--dot-bg) calc(var(--dot-space) - var(--dot-size)), transparent 1%) center / var(--dot-space) var(--dot-space),
+        linear-gradient(var(--dot-bg) calc(var(--dot-space) - var(--dot-size)), transparent 1%) center / var(--dot-space) var(--dot-space),
+        var(--dot-color);
+    }
+</style>

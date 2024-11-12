@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { cursor, controls, zoom } from '../store';
+    import { cursor, controls, camera, zoom } from '../store';
     import type { Controls } from '../types';
 
     let c: string;
@@ -7,6 +7,9 @@
 
     let controlsState: Controls;
     controls.subscribe(value => controlsState = value);
+
+    let cameraState: { x: number, y: number };
+    camera.subscribe(value => cameraState = value);
 
     let zoomLevel: number;
     zoom.subscribe(value => zoomLevel = value);
@@ -28,11 +31,27 @@
         }
     }
 
+    const adjustCameraForZoom = (from: number, to: number) => {
+        const canvasWidth = window.innerWidth;
+        const canvasHeight = window.innerHeight;
+        const canvasCenterX = canvasWidth / 2;
+        const canvasCenterY = canvasHeight / 2;
+        const worldCenterX = cameraState.x + canvasCenterX / from;
+        const worldCenterY = cameraState.y + canvasCenterY / from;
+        const newCameraX = worldCenterX - canvasCenterX / to;
+        const newCameraY = worldCenterY - canvasCenterY / to;
+        camera.update(() => ({ x: newCameraX, y: newCameraY }));
+    }
+
     const zoomIn = () => {
+        if (zoomLevel >= 2) return;
+        adjustCameraForZoom(zoomLevel, zoomLevel + 0.1);
         zoom.update(value => value + 0.1);
     }
 
     const zoomOut = () => {
+        if (zoomLevel <= 0.2) return;
+        adjustCameraForZoom(zoomLevel, zoomLevel - 0.1);
         zoom.update(value => value - 0.1);
     }
 
@@ -46,7 +65,7 @@
 
 </script>
 
-<main class="absolute bottom-0 left-0 flex justify-center items-center gap-1 border-2 border-black bg-black m-4 rounded-full">
+<main class="absolute bottom-0 left-1/2 transform -translate-x-1/2 flex justify-center items-center gap-1 border-2 border-black bg-black m-4 rounded-full">
     <button
         class={ controlsState.drag? "bg-neutral-50 p-1.5 rounded-full" : "bg-black text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black" }
         onclick={() => toggleDrag()}

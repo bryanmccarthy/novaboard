@@ -8,4 +8,5 @@ export const controls = writable<Controls>({
     pan: false,
 });
 
+export const camera = writable<{ x: number, y: number }>({ x: 0, y: 0 });
 export const zoom = writable<number>(1);
