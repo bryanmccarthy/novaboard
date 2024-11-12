@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { cursor, controls } from '../store';
+    import { cursor, controls, zoom } from '../store';
     import type { Controls } from '../types';
 
     let c: string;
@@ -7,6 +7,9 @@
 
     let controlsState: Controls;
     controls.subscribe(value => controlsState = value);
+
+    let zoomLevel: number;
+    zoom.subscribe(value => zoomLevel = value);
 
     const toggleDrag = () => {
         if (!controlsState.drag) {
@@ -24,21 +27,71 @@
             controls.update(() => ({ drag: false, pan: true }));
         }
     }
+
+    const zoomIn = () => {
+        zoom.update(value => value + 0.1);
+    }
+
+    const zoomOut = () => {
+        zoom.update(value => value - 0.1);
+    }
+
+    const undo = () => {
+
+    }
+
+    const redo = () => {
+
+    }
+
 </script>
 
-<main class="absolute bottom-0 left-1/2 flex justify-center items-center border-2 border-black bg-black m-4 rounded-full">
+<main class="absolute bottom-0 left-0 flex justify-center items-center gap-1 border-2 border-black bg-black m-4 rounded-full">
     <button
-        class={ controlsState.drag? "bg-white p-1.5 rounded-full" : "bg-black text-white p-1.5 rounded-full" }
+        class={ controlsState.drag? "bg-neutral-50 p-1.5 rounded-full" : "bg-black text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black" }
         onclick={() => toggleDrag()}
         aria-label="Toggle Drag"
     >
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mouse-pointer-2"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mouse-pointer-2"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/></svg>
     </button>
     <button 
-        class={ controlsState.pan? "bg-white p-1.5 rounded-full" : "bg-black text-white p-1.5 rounded-full" }
+        class={ controlsState.pan? "bg-white p-1.5 rounded-full" : "bg-black text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black" }
         onclick={() => togglePan()}
         aria-label="Toggle Pan"
     >
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hand"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>    
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hand"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>    
     </button>
+    <!-- divider -->
+    <div class="border border-neutral-50 h-6 rounded m-1"></div>
+    <button
+        class="bg-black text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black"
+        onclick={() => zoomOut()}
+        aria-label="Undo"
+    >
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-minus"><path d="M5 12h14"/></svg>
+    </button>
+    <div class="bg-black text-white text-m">
+        {zoomLevel.toFixed(1)}x
+    </div>
+    <button
+        class="bg-black text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black"
+        onclick={() => zoomIn()}
+        aria-label="Undo"
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+    </button>
+    <button
+        class="bg-black text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black"
+        onclick={() => undo()}
+        aria-label="Undo"
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-undo"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+    </button>
+    <button
+        class="bg-black text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black"
+        onclick={() => redo()}
+        aria-label="Redo"
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-redo"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg>
+    </button>   
 </main>

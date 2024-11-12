@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { cursor, controls } from '../store';
+    import { cursor, controls, zoom } from '../store';
     import type { Image, Actions, Controls } from '../types';
 
     let canvas: HTMLCanvasElement;
@@ -18,6 +18,9 @@
 
     let controlsState: Controls;
     controls.subscribe(value => controlsState = value);
+
+    let zoomLevel: number;
+    zoom.subscribe(value => zoomLevel = value);
 
     let resizeHandle: string | null = null;
     const resizeRadius = 6;
@@ -50,6 +53,9 @@
     // ------------------------------
 
     const handleMouseDown = (event: MouseEvent) => {
+        let canvasX = event.clientX / zoomLevel;
+        let canvasY = event.clientY / zoomLevel;
+
         // check for image panning
         if (controlsState.pan) {
             cursor.update(() => "cursor-grabbing");
@@ -61,29 +67,29 @@
         if (selectedIndex !== null) {
             const image = images[selectedIndex];
             if (
-                event.clientX >= image.x - resizeRadius && event.clientX <= image.x + resizeRadius &&
-                event.clientY >= image.y - resizeRadius && event.clientY <= image.y + resizeRadius
+                canvasX >= image.x - resizeRadius && canvasX <= image.x + resizeRadius &&
+                canvasY >= image.y - resizeRadius && canvasY <= image.y + resizeRadius
             ) {
                 actions = { panning: false, dragging: false, resizing: true };
                 resizeHandle = "nw";
                 return;
             } else if (
-                event.clientX >= image.x + image.width - resizeRadius && event.clientX <= image.x + image.width + resizeRadius &&
-                event.clientY >= image.y - resizeRadius && event.clientY <= image.y + resizeRadius
+                canvasX >= image.x + image.width - resizeRadius && canvasX <= image.x + image.width + resizeRadius &&
+                canvasY >= image.y - resizeRadius && canvasY <= image.y + resizeRadius
             ) {
                 actions = { panning: false, dragging: false, resizing: true };
                 resizeHandle = "ne";
                 return;
             } else if (
-                event.clientX >= image.x - resizeRadius && event.clientX <= image.x + resizeRadius &&
-                event.clientY >= image.y + image.height - resizeRadius && event.clientY <= image.y + image.height + resizeRadius
+                canvasX >= image.x - resizeRadius && canvasX <= image.x + resizeRadius &&
+                canvasY >= image.y + image.height - resizeRadius && canvasY <= image.y + image.height + resizeRadius
             ) {
                 actions = { panning: false, dragging: false, resizing: true };
                 resizeHandle = "sw";
                 return;
             } else if (
-                event.clientX >= image.x + image.width - resizeRadius && event.clientX <= image.x + image.width + resizeRadius &&
-                event.clientY >= image.y + image.height - resizeRadius && event.clientY <= image.y + image.height + resizeRadius
+                canvasX >= image.x + image.width - resizeRadius && canvasX <= image.x + image.width + resizeRadius &&
+                canvasY >= image.y + image.height - resizeRadius && canvasY <= image.y + image.height + resizeRadius
             ) {
                 actions = { panning: false, dragging: false, resizing: true };
                 resizeHandle = "se";
@@ -96,15 +102,15 @@
         for (let i = images.length - 1; i >= 0; i--) {
             const image = images[i];
             if (
-                event.clientX >= image.x &&
-                event.clientX <= image.x + image.width &&
-                event.clientY >= image.y &&
-                event.clientY <= image.y + image.height
+                canvasX >= image.x &&
+                canvasX <= image.x + image.width &&
+                canvasY >= image.y &&
+                canvasY <= image.y + image.height
             ) {
                 found = true;
                 selectedIndex = i;
                 actions = { panning: false, dragging: true, resizing: false };
-                draggingOffset = { x: event.clientX - image.x, y: event.clientY - image.y };
+                draggingOffset = { x: canvasX - image.x, y: canvasY - image.y };
                 break;
             }
         }
@@ -115,6 +121,9 @@
     }
 
     const handleMouseMove = (event: MouseEvent) => {
+        let canvasX = event.clientX / zoomLevel;
+        let canvasY = event.clientY / zoomLevel;
+
         if (actions.panning) {
             images.map(img => {
                 img.x += event.movementX;
@@ -128,8 +137,8 @@
             const updatedImages = [...images];
             updatedImages[selectedIndex] = {
                 ...image,
-                x: event.clientX - draggingOffset.x,
-                y: event.clientY - draggingOffset.y
+                x: canvasX - draggingOffset.x,
+                y: canvasY - draggingOffset.y
             };
             images = updatedImages;
         }
@@ -142,33 +151,33 @@
                 case "nw":
                     updatedImages[selectedIndex] = {
                         ...image,
-                        x: event.clientX,
-                        y: event.clientY,
-                        width: image.x + image.width - event.clientX,
-                        height: image.y + image.height - event.clientY
+                        x: canvasX,
+                        y: canvasY,
+                        width: image.x + image.width - canvasX,
+                        height: image.y + image.height - canvasY
                     };
                     break;
                 case "ne":
                     updatedImages[selectedIndex] = {
                         ...image,
-                        y: event.clientY,
-                        width: event.clientX - image.x,
-                        height: image.y + image.height - event.clientY
+                        y: canvasY,
+                        width: canvasX - image.x,
+                        height: image.y + image.height - canvasY 
                     };
                     break;
                 case "sw":
                     updatedImages[selectedIndex] = {
                         ...image,
-                        x: event.clientX,
-                        width: image.x + image.width - event.clientX,
-                        height: event.clientY - image.y
+                        x: canvasX,
+                        width: image.x + image.width - canvasX,
+                        height: canvasY - image.y
                     };
                     break;
                 case "se":
                     updatedImages[selectedIndex] = {
                         ...image,
-                        width: event.clientX - image.x,
-                        height: event.clientY - image.y
+                        width: canvasX - image.x,
+                        height: canvasY - image.y
                     };
                     break;
             }
@@ -179,23 +188,23 @@
         if (selectedIndex !== null && !controlsState.pan) {
             const image = images[selectedIndex];
             if (
-                event.clientX >= image.x - resizeRadius && event.clientX <= image.x + resizeRadius &&
-                event.clientY >= image.y - resizeRadius && event.clientY <= image.y + resizeRadius
+                canvasX >= image.x - resizeRadius && canvasX <= image.x + resizeRadius &&
+                canvasY >= image.y - resizeRadius && canvasY <= image.y + resizeRadius
             ) {
                 cursor.update(() => "cursor-nwse-resize");
             } else if (
-                event.clientX >= image.x + image.width - resizeRadius && event.clientX <= image.x + image.width + resizeRadius &&
-                event.clientY >= image.y - resizeRadius && event.clientY <= image.y + resizeRadius
+                canvasX >= image.x + image.width - resizeRadius && canvasX <= image.x + image.width + resizeRadius &&
+                canvasY >= image.y - resizeRadius && canvasY <= image.y + resizeRadius
             ) {
                 cursor.update(() => "cursor-nesw-resize");
             } else if (
-                event.clientX >= image.x - resizeRadius && event.clientX <= image.x + resizeRadius &&
-                event.clientY >= image.y + image.height - resizeRadius && event.clientY <= image.y + image.height + resizeRadius
+                canvasX >= image.x - resizeRadius && canvasX <= image.x + resizeRadius &&
+                canvasY >= image.y + image.height - resizeRadius && canvasY <= image.y + image.height + resizeRadius
             ) {
                 cursor.update(() => "cursor-nesw-resize");
             } else if (
-                event.clientX >= image.x + image.width - resizeRadius && event.clientX <= image.x + image.width + resizeRadius &&
-                event.clientY >= image.y + image.height - resizeRadius && event.clientY <= image.y + image.height + resizeRadius
+                canvasX >= image.x + image.width - resizeRadius && canvasX <= image.x + image.width + resizeRadius &&
+                canvasY >= image.y + image.height - resizeRadius && canvasY <= image.y + image.height + resizeRadius
             ) {
                 cursor.update(() => "cursor-nwse-resize");
             } else {
@@ -270,6 +279,8 @@
         if (!ctx) return;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.scale(zoomLevel, zoomLevel);
 
         // draw images
         images.forEach(image => {
@@ -279,12 +290,12 @@
         if (selectedIndex !== null) {
             // draw selection box
             const image = images[selectedIndex];
-            ctx.strokeStyle = '#6366f1';
+            ctx.strokeStyle = '#3b82f6';
             ctx.lineWidth = 2;
             ctx.strokeRect(image.x, image.y, image.width, image.height);
             // draw resize handles
             const handleSize = 4;
-            ctx.fillStyle = '#4f46e5';
+            ctx.fillStyle = '#2563eb';
             ctx.beginPath();
             ctx.arc(image.x, image.y, handleSize, 0, 2 * Math.PI);
             ctx.fill();
@@ -299,6 +310,7 @@
             ctx.fill();
         }
 
+        ctx.restore(); // restore scale
         requestAnimationFrame(draw);
     }
 </script>

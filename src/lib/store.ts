@@ -7,3 +7,5 @@ export const controls = writable<Controls>({
     drag: true,
     pan: false,
 });
+
+export const zoom = writable<number>(1);
