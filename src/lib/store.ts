@@ -1,5 +1,8 @@
 import { writable } from 'svelte/store';
-import type { Controls, Actions } from './types';
+import type { Image, Controls } from './types';
+
+export const images = writable<Image[]>([]);
+export const selectedIndex = writable<number | null>(null);
 
 export const cursor = writable<string>('default');
 

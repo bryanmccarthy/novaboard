@@ -1,14 +1,16 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { cursor, controls, camera, zoom } from '../store';
+    import { selectedIndex, images, cursor, controls, camera, zoom } from '../store';
     import type { Image, Actions, Controls } from '../types';
 
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D | null;
 
-    let selectedIndex: number | null = null;
+    let s: number | null;
+    selectedIndex.subscribe(value => s = value);
 
-    let images: Image[] = [];
+    let imagesState: Image[];
+    images.subscribe(value => imagesState = value);
 
     let cameraState: { x: number, y: number };
     camera.subscribe(value => cameraState = value);
@@ -51,7 +53,7 @@
             width: testImg.width/4,
             height: testImg.height/4
         }
-        images.push(newImage);
+        images.update(value => [...value, newImage]);
     }
 
     const testImg2 = new Image();
@@ -66,7 +68,7 @@
             width: testImg2.width/2,
             height: testImg2.height/2
         }
-        images.push(newImage);
+        images.update(value => [...value, newImage]);
     }
     // ------------------------------
 
@@ -82,8 +84,8 @@
         }
 
         // check for image resize
-        if (selectedIndex !== null) {
-            const image = images[selectedIndex];
+        if (s !== null) {
+            const image = imagesState[s];
             if (
                 canvasX >= image.x - resizeRadius && canvasX <= image.x + resizeRadius &&
                 canvasY >= image.y - resizeRadius && canvasY <= image.y + resizeRadius
@@ -117,8 +119,8 @@
 
         // check for image drag
         let found = false;
-        for (let i = images.length - 1; i >= 0; i--) {
-            const image = images[i];
+        for (let i = imagesState.length - 1; i >= 0; i--) {
+            const image = imagesState[i];
             if (
                 canvasX >= image.x &&
                 canvasX <= image.x + image.width &&
@@ -126,7 +128,7 @@
                 canvasY <= image.y + image.height
             ) {
                 found = true;
-                selectedIndex = i;
+                selectedIndex.update(() => i);
                 actions = { panning: false, dragging: true, resizing: false };
                 draggingOffset = { x: canvasX - image.x, y: canvasY - image.y };
                 break;
@@ -134,7 +136,7 @@
         }
 
         if (!found) {
-            selectedIndex = null;
+            selectedIndex.update(() => null);
         }
     }
 
@@ -147,28 +149,28 @@
             //     img.x += event.movementX;
             //     img.y += event.movementY;
             // });
-            camera.update(value => ({ x: value.x - event.movementX, y: value.y - event.movementY }));
+            camera.update(value => ({ x: value.x - event.movementX / zoomLevel, y: value.y - event.movementY / zoomLevel }));
         }
 
         if (actions.dragging) {
-            if (selectedIndex === null) return;
-            const image = images[selectedIndex];
-            const updatedImages = [...images];
-            updatedImages[selectedIndex] = {
+            if (s === null) return;
+            const image = imagesState[s];
+            const updatedImages = [...imagesState];
+            updatedImages[s] = {
                 ...image,
                 x: canvasX - draggingOffset.x,
                 y: canvasY - draggingOffset.y
             };
-            images = updatedImages;
+            images.update(() => updatedImages);
         }
 
         if (actions.resizing) {
-            if (selectedIndex === null || resizeHandle === null) return;
-            const image = images[selectedIndex];
-            const updatedImages = [...images];
+            if (s === null || resizeHandle === null) return;
+            const image = imagesState[s];
+            const updatedImages = [...imagesState];
             switch (resizeHandle) {
                 case "nw":
-                    updatedImages[selectedIndex] = {
+                    updatedImages[s] = {
                         ...image,
                         x: canvasX,
                         y: canvasY,
@@ -177,7 +179,7 @@
                     };
                     break;
                 case "ne":
-                    updatedImages[selectedIndex] = {
+                    updatedImages[s] = {
                         ...image,
                         y: canvasY,
                         width: canvasX - image.x,
@@ -185,7 +187,7 @@
                     };
                     break;
                 case "sw":
-                    updatedImages[selectedIndex] = {
+                    updatedImages[s] = {
                         ...image,
                         x: canvasX,
                         width: image.x + image.width - canvasX,
@@ -193,19 +195,19 @@
                     };
                     break;
                 case "se":
-                    updatedImages[selectedIndex] = {
+                    updatedImages[s] = {
                         ...image,
                         width: canvasX - image.x,
                         height: canvasY - image.y
                     };
                     break;
             }
-            images = updatedImages;
+            images.update(() => updatedImages);
         }
 
         // if mouse is over a resize handle, change cursor
-        if (selectedIndex !== null && !controlsState.pan) {
-            const image = images[selectedIndex];
+        if (s !== null && !controlsState.pan) {
+            const image = imagesState[s];
             if (
                 canvasX >= image.x - resizeRadius && canvasX <= image.x + resizeRadius &&
                 canvasY >= image.y - resizeRadius && canvasY <= image.y + resizeRadius
@@ -239,9 +241,9 @@
         if (actions.resizing) {
             // fix negative width/height
             if (selectedIndex !== null) {
-                const updatedImages = [...images];
+                const updatedImages = [...imagesState];
                 updatedImages.map((img, i) => {
-                    if (i === selectedIndex) {
+                    if (i === s) {
                         if (img.width < 0) { // TODO: maybe also handle flipping image
                             img.x += img.width;
                             img.width = Math.abs(img.width);
@@ -253,10 +255,19 @@
                     }
                     return img;
                 });
-                images = updatedImages;
+                images.update(() => updatedImages);
             }
         }
         actions = { panning: false, dragging: false, resizing: false };
+    }
+
+    const handleWheel = (event: WheelEvent) => {
+        event.preventDefault();
+
+        if (controlsState.pan) {
+            camera.update(value => ({ x: value.x + event.deltaX / zoomLevel, y: value.y + event.deltaY / zoomLevel }));
+            return;
+        }
     }
 
     const handleSize = () => {
@@ -283,15 +294,110 @@
                 const newImage: Image = {
                     src: img.src,
                     img: img,
-                    x: 50,
-                    y: 50,
+                    x: event.clientX / zoomLevel + cameraState.x - img.width/4,
+                    y: event.clientY / zoomLevel + cameraState.y - img.height/4,
                     width: img.width/2,
-                    height: img.height/2
+                    height: img.height/2,
                 }
-                images.push(newImage);
+                images.update(value => [...value, newImage]);
             }
         }
         reader.readAsDataURL(file);
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === 'c' && event.ctrlKey) {
+            copyImageToClipboard();
+        }
+
+        // if (event.key === 'Delete' && selectedIndex !== null) {
+        //     images.splice(selectedIndex, 1);
+        //     selectedIndex = null;
+        // }
+    }
+
+    // TODO: fix copy to clipboard -- check with https 
+    const copyImageToClipboard = async () => {
+        if (s !== null && navigator.clipboard && navigator.clipboard.write) {
+            const image = imagesState[s];
+
+            const offscreenCanvas = document.createElement('canvas');
+            offscreenCanvas.width = image.width;
+            offscreenCanvas.height = image.height;
+            const offscreenCtx = offscreenCanvas.getContext('2d');
+
+            if (offscreenCtx) {
+                offscreenCtx.drawImage(image.img, 0, 0, image.width, image.height);
+                offscreenCanvas.toBlob(async (blob) => {
+                    if (blob) {
+                        const item = new ClipboardItem({ [blob.type]: blob });
+                        try {
+                            await navigator.clipboard.write([item]);
+                            console.log('Image copied to system clipboard');
+                        } catch (error) {
+                            console.error('Failed to copy image to clipboard', error);
+                        }
+                    }
+                });
+            }
+        } else {
+            console.warn('Clipboard API not available or no image selected');
+        }
+    }
+
+    const handlePaste = (event: ClipboardEvent) => {
+        console.log(event.clipboardData?.items);
+        event.preventDefault();
+        const items = event.clipboardData?.items;
+        if (!items) return;
+
+        for (const item of items) {
+            if (item.type.startsWith('image/')) {
+                const blob = item.getAsFile();
+                if (blob) {
+                    const img = new Image();
+                    const url = URL.createObjectURL(blob);
+                    img.src = url;
+                    img.onload = () => {
+                        const newImage: Image = {
+                            src: url,
+                            img: img,
+                            x: 50,
+                            y: 50,
+                            width: img.width / 2,
+                            height: img.height / 2
+                        };
+                        images.update(value => [...value, newImage]);
+                    };
+                }
+            } else if (item.type === 'text/plain') {
+                item.getAsString((text) => {
+                    if (isImageUrl(text)) {
+                        const img = new Image();
+                        img.crossOrigin = 'Anonymous'; // Handle CORS
+                        img.src = text;
+                        img.onload = () => {
+                            const newImage: Image = {
+                                src: text,
+                                img: img,
+                                x: 50,
+                                y: 50,
+                                width: img.width / 2,
+                                height: img.height / 2
+                            };
+                            images.update(value => [...value, newImage]);
+                        };
+                        img.onerror = () => {
+                            console.error('Failed to load image from URL:', text);
+                        };
+                    }
+                });
+            }
+        }
+    }
+
+    const isImageUrl = (url: string) => {
+        return /\.(jpeg|jpg|gif|png|svg|webp)$/.test(url);
     }
     
     const draw = () => {
@@ -303,23 +409,18 @@
         ctx.scale(zoomLevel, zoomLevel);
 
         // draw images
-        images.forEach(image => {
+        imagesState.forEach(image => {
             ctx?.drawImage(image.img, image.x - cameraState.x, image.y - cameraState.y, image.width, image.height);
         });
 
-        if (selectedIndex !== null) {
-            // draw selection box
-            const image = images[selectedIndex];
-            ctx.strokeStyle = '#4338ca';
-            ctx.lineWidth = 2;
+        if (s !== null) {
+            // draw selected image border 
+            const image = imagesState[s];
+            ctx.strokeStyle = '#000';
+            if (zoomLevel <= 0.8) ctx.lineWidth = 3;
+            else if (zoomLevel >= 1.2) ctx.lineWidth = 1;
+            else ctx.lineWidth = 2;
             ctx.strokeRect(image.x - cameraState.x, image.y - cameraState.y, image.width, image.height);
-            // draw resize handles
-            const handleSize = 6;
-            ctx.fillStyle = '#4338ca';
-            ctx.fillRect(image.x - handleSize/2 - cameraState.x, image.y - handleSize/2 - cameraState.y, handleSize, handleSize);
-            ctx.fillRect(image.x + image.width - handleSize/2 - cameraState.x, image.y - handleSize/2 - cameraState.y, handleSize, handleSize);
-            ctx.fillRect(image.x - handleSize/2 - cameraState.x, image.y + image.height - handleSize/2 - cameraState.y, handleSize, handleSize);
-            ctx.fillRect(image.x + image.width - handleSize/2 - cameraState.x, image.y + image.height - handleSize/2 - cameraState.y, handleSize, handleSize);
         }
 
         // draw (0,0) center point
@@ -333,7 +434,7 @@
     }
 </script>
 
-<svelte:window on:resize={handleSize} />
+<svelte:window on:resize={handleSize} on:paste={handlePaste} on:keydown={handleKeyDown} />
 
 <canvas
     class="relative bg-neutral-50 {cursorStyle}"
@@ -342,6 +443,7 @@
     onmousemove={handleMouseMove}
     onmousedown={handleMouseDown}
     onmouseup={handleMouseUp}
+    onwheel={handleWheel}
     ondragover={handleDragOver}
     ondrop={handleDrop}
     style:--dot-size={zoomLevel <= 0.6 ? '1.6px' : zoomLevel >= 1.3 ? '0.8px' : `${1/zoomLevel}px`}
@@ -352,7 +454,6 @@
     #canvas {
         --dot-bg: #fafafa;
         --dot-color: #000000;
-        /* --dot-size: 1.5px; */
         --dot-space: 20px;
         background:
         linear-gradient(90deg, var(--dot-bg) calc(var(--dot-space) - var(--dot-size)), transparent 1%) center / var(--dot-space) var(--dot-space),
