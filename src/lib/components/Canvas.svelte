@@ -51,7 +51,7 @@
             x: 50,
             y: 50,
             width: testImg.width/4,
-            height: testImg.height/4
+            height: testImg.height/4,
         }
         images.update(value => [...value, newImage]);
     }
@@ -66,7 +66,7 @@
             x: 200,
             y: 200,
             width: testImg2.width/2,
-            height: testImg2.height/2
+            height: testImg2.height/2,
         }
         images.update(value => [...value, newImage]);
     }
@@ -365,7 +365,7 @@
                             x: 50,
                             y: 50,
                             width: img.width / 2,
-                            height: img.height / 2
+                            height: img.height / 2,
                         };
                         images.update(value => [...value, newImage]);
                     };
@@ -383,7 +383,7 @@
                                 x: 50,
                                 y: 50,
                                 width: img.width / 2,
-                                height: img.height / 2
+                                height: img.height / 2,
                             };
                             images.update(value => [...value, newImage]);
                         };

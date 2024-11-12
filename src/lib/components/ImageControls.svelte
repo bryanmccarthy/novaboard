@@ -28,7 +28,10 @@
     }
 
     const handleDuplicate = () => {
-
+        if (s === null) return;
+        const image = imagesState[s];
+        images.update(value => value.concat({ ...image, x: image.x + 20, y: image.y + 20 }));
+        selectedIndex.update(value => imagesState.length - 1);
     }
 
     const handleFlip = () => {
@@ -40,11 +43,21 @@
     }
 
     const handleBringToFront = () => {
-
+        if (s === null) return;
+        images.update(value => {
+            const image = value[s as number];
+            return value.filter((_, index) => index !== s).concat(image);
+        });
+        selectedIndex.update(value => imagesState.length - 1);
     }
 
     const handleSendToBack = () => {
-
+        if (s === null) return;
+        images.update(value => {
+            const image = value[s as number];
+            return [image].concat(value.filter((_, index) => index !== s));
+        });
+        selectedIndex.update(value => 0);
     }
 
     const handleEraser = () => {
@@ -52,7 +65,9 @@
     }
 
     const handleDelete = () => {
-
+        if (s === null) return;
+        images.update(value => value.filter((_, index) => index !== s));
+        selectedIndex.update(value => null);
     }
 </script>
 
