@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
     import { selectedIndex, images, cursor, controls, imageControls, camera, zoom } from '../store';
     import type { Image, Actions, Controls, ImageControls } from '../types';
+    import { scale } from 'svelte/transition';
 
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D | null;
@@ -189,7 +190,7 @@
         }
 
         // if mouse is over a resize handle, change cursor
-        if (s !== null && !controlsState.pan) {
+        if (s !== null && !controlsState.pan && !imageControlsState.erase) {
             const image = imagesState[s];
             if (
                 canvasX >= image.x - resizeRadius && canvasX <= image.x + resizeRadius &&
@@ -312,10 +313,12 @@
             zoom.update(value => value - 0.1);
         }
 
-        // if (event.key === 'Delete' && selectedIndex !== null) {
-        //     images.splice(selectedIndex, 1);
-        //     selectedIndex = null;
-        // }
+        if (event.key === 'Delete' || event.key === 'Backspace') {
+            if (s === null) return;
+            images.update(value => value.filter((_, i) => i !== s));
+            selectedIndex.update(() => null);
+            imageControls.update(() => ({ rotate: false, erase: false }));
+        }
     }
 
     // TODO: fix copy to clipboard -- check with https 
@@ -376,8 +379,8 @@
                 img: img,
                 x: x,
                 y: y,
-                width: img.width / 2,
-                height: img.height / 2,
+                width: img.width > 1400 ? img.width / 4 : img.width > 1000 ? img.width / 2 : img.width,
+                height: img.width > 1400 ? img.height / 4 : img.width > 1000 ? img.height / 2 : img.height,
                 flipped: false,
                 mask: document.createElement('canvas'),
             };
