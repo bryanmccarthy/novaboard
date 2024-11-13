@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { images, selectedIndex, camera, zoom } from '../store';
-    import type { Image } from '../types';
+    import { images, selectedIndex, camera, zoom, imageControls } from '../store';
+    import type { Image, ImageControls } from '../types';
 
     let s: number | null;
     selectedIndex.subscribe(value => s = value);
@@ -13,6 +13,9 @@
 
     let zoomLevel: number;
     zoom.subscribe(value => zoomLevel = value);
+
+    let imageControlsState: ImageControls;
+    imageControls.subscribe(value => imageControlsState = value);
 
     let posX = 0;
     let posY = 0;
@@ -35,7 +38,16 @@
     }
 
     const handleFlip = () => {
-
+        if (s === null) return;
+        images.update(value => {
+            const image = value[s as number];
+            return value.map((img, index) => {
+                if (index === s) {
+                    return { ...img, flipped: !img.flipped };
+                }
+                return img;
+            });
+        });
     }
 
     const handleRotate = () => {
@@ -61,7 +73,7 @@
     }
 
     const handleEraser = () => {
-
+        imageControls.update(value => ({ rotate: false, erase: !imageControlsState.erase }));
     }
 
     const handleDelete = () => {
@@ -115,7 +127,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send-to-back"><rect x="14" y="14" width="8" height="8" rx="2"/><rect x="2" y="2" width="8" height="8" rx="2"/><path d="M7 14v1a2 2 0 0 0 2 2h1"/><path d="M14 7h1a2 2 0 0 1 2 2v1"/></svg>
     </button>
     <button
-        class="bg-black text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black"
+        class={`bg-black text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black ${imageControlsState.erase && 'bg-neutral-50 text-black'}`}
         onclick={() => handleEraser()}
         aria-label="Eraser"
     >
