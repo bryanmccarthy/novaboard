@@ -461,12 +461,13 @@
 
         ctx.save();
         ctx.scale(zoomLevel, zoomLevel);
+        ctx.translate(-cameraState.x, -cameraState.y);
 
         // draw images
         imagesState.forEach(image => {
             if (!ctx) return;
             ctx.save();
-            ctx.translate(image.x - cameraState.x, image.y - cameraState.y);
+            ctx.translate(image.x, image.y);
 
             if (image.flipped) {
                 ctx.scale(-1, 1);
@@ -495,12 +496,12 @@
             if (zoomLevel <= 0.8) ctx.lineWidth = 3;
             else if (zoomLevel >= 1.2) ctx.lineWidth = 1;
             else ctx.lineWidth = 2;
-            ctx.strokeRect(image.x - cameraState.x, image.y - cameraState.y, image.width, image.height);
+            ctx.strokeRect(image.x, image.y, image.width, image.height);
         }
 
         // draw (0,0) center point
         ctx.beginPath();
-        ctx.arc(0 - cameraState.x, 0 - cameraState.y, 5, 0, 2 * Math.PI);
+        ctx.arc(0, 0, 5, 0, 2 * Math.PI);
         ctx.fill();
 
 
