@@ -343,7 +343,6 @@
     }
 
     const handlePaste = (event: ClipboardEvent) => {
-        console.log(event.clipboardData?.items);
         event.preventDefault();
         const items = event.clipboardData?.items;
         if (!items) return;
