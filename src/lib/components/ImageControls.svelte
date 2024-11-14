@@ -97,6 +97,7 @@
 
     const handleEraser = () => {
         imageControls.update(value => ({ rotate: false, erase: !imageControlsState.erase }));
+        cursor.update(() => "cursor-crosshair");
     }
 
     const handleEraserSize = (e: Event) => {

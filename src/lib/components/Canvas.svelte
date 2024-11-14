@@ -19,8 +19,8 @@
     let actions: Actions = { panning: false, dragging: false, resizing: false, erasing: false };
     let draggingOffset: { x: number, y: number } = { x: 0, y: 0 };
 
-    let cursorStyle: string;
-    cursor.subscribe(value => cursorStyle = value);
+    let cursorState: string;
+    cursor.subscribe(value => cursorState = value);
 
     let controlsState: Controls;
     controls.subscribe(value => controlsState = value);
@@ -226,7 +226,7 @@
             ) {
                 cursor.update(() => "cursor-nwse-resize");
             } else {
-                cursor.update(() => "cursor-default");
+                if (!imageControlsState.erase) cursor.update(() => "cursor-default");
             }
         }
     }
@@ -508,7 +508,7 @@
 <svelte:window on:resize={handleSize} on:paste={handlePaste} on:keydown={handleKeyDown} />
 
 <canvas
-    class="relative bg-neutral-50 {cursorStyle}"
+    class="relative bg-neutral-50 {cursorState}"
     id="canvas" 
     bind:this={canvas}
     onmousemove={handleMouseMove}
