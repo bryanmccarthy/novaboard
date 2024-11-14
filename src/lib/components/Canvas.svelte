@@ -152,43 +152,44 @@
         }
 
         if (actions.resizing) {
-            if (s === null || resizeHandle === null) return;
+            if (s === null) return;
             const image = imagesState[s];
             const updatedImages = [...imagesState];
+            let newX = image.x;
+            let newY = image.y;
+            let newWidth = image.width;
+            let newHeight = image.height;
+
             switch (resizeHandle) {
                 case "nw":
-                    updatedImages[s] = {
-                        ...image,
-                        x: canvasX,
-                        y: canvasY,
-                        width: image.x + image.width - canvasX,
-                        height: image.y + image.height - canvasY
-                    };
-                    break;
+                newWidth = Math.max(image.x + image.width - canvasX, 30);
+                newHeight = Math.max(image.y + image.height - canvasY, 30);
+                newX = image.x + image.width - newWidth;
+                newY = image.y + image.height - newHeight;
+                break;
                 case "ne":
-                    updatedImages[s] = {
-                        ...image,
-                        y: canvasY,
-                        width: canvasX - image.x,
-                        height: image.y + image.height - canvasY 
-                    };
-                    break;
+                newWidth = Math.max(canvasX - image.x, 30);
+                newHeight = Math.max(image.y + image.height - canvasY, 30);
+                newY = image.y + image.height - newHeight;
+                break;
                 case "sw":
-                    updatedImages[s] = {
-                        ...image,
-                        x: canvasX,
-                        width: image.x + image.width - canvasX,
-                        height: canvasY - image.y
-                    };
-                    break;
+                newWidth = Math.max(image.x + image.width - canvasX, 30);
+                newHeight = Math.max(canvasY - image.y, 30);
+                newX = image.x + image.width - newWidth;
+                break;
                 case "se":
-                    updatedImages[s] = {
-                        ...image,
-                        width: canvasX - image.x,
-                        height: canvasY - image.y
-                    };
-                    break;
+                newWidth = Math.max(canvasX - image.x, 30);
+                newHeight = Math.max(canvasY - image.y, 30);
+                break;
             }
+
+            updatedImages[s] = {
+                ...image,
+                x: newX,
+                y: newY,
+                width: newWidth,
+                height: newHeight
+            };
             images.update(() => updatedImages);
         }
 
@@ -224,27 +225,6 @@
     const handleMouseUp = (event: MouseEvent) => {
         if (controlsState.pan) {
             cursor.update(() => "cursor-grab");
-        }
-
-        if (actions.resizing) {
-            // fix negative width/height
-            if (selectedIndex !== null) {
-                const updatedImages = [...imagesState];
-                updatedImages.map((img, i) => {
-                    if (i === s) {
-                        if (img.width < 0) { // TODO: maybe also handle flipping image
-                            img.x += img.width;
-                            img.width = Math.abs(img.width);
-                        }
-                        if (img.height < 0) {
-                            img.y += img.height;
-                            img.height = Math.abs(img.height);
-                        }
-                    }
-                    return img;
-                });
-                images.update(() => updatedImages);
-            }
         }
 
         if (actions.erasing) {
