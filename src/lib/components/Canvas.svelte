@@ -396,35 +396,43 @@
         };
     }
 
-    const eraseAt = (x: number, y: number, lastEraser: { x: number | null, y: number | null }) => {
+    const eraseAt = (x: number, y: number, lastEraser: { x: number | null; y: number | null }) => {
         if (s === null) return;
 
         const image = imagesState[s];
 
-        let imgX = image.x;
-        let imgY = image.y;
-        let imgWidth = image.width;
-        let imgHeight = image.height;
+        const imgX = image.x;
+        const imgY = image.y;
+        const imgWidth = image.width;
+        const imgHeight = image.height;
         const eraserSize = 10; // TODO: make dynamic
-
-        if (image.flipped) {
-            imgX = image.x + image.width;
-            imgWidth = -image.width;
-        }
 
         if (x >= imgX && x <= imgX + imgWidth && y >= imgY && y <= imgY + imgHeight) {
             const maskCtx = image.mask.getContext('2d');
             if (!maskCtx) return;
 
-            // Erase on mask canvas
-            if (lastEraser.x !== null && lastEraser.y !== null) {
+            let imageCoordX = x - imgX;
+            let imageCoordY = y - imgY;
+            let lastImageCoordX =
+                lastEraser.x !== null ? lastEraser.x - imgX : null;
+            let lastImageCoordY =
+                lastEraser.y !== null ? lastEraser.y - imgY : null;
+
+            if (image.flipped) {
+                imageCoordX = imgWidth - imageCoordX;
+                if (lastImageCoordX !== null) {
+                    lastImageCoordX = imgWidth - lastImageCoordX;
+                }
+            }
+
+            if (lastImageCoordX !== null && lastImageCoordY !== null) {
                 maskCtx.save();
                 maskCtx.globalCompositeOperation = 'destination-out';
                 maskCtx.lineWidth = eraserSize;
                 maskCtx.lineCap = 'round';
                 maskCtx.beginPath();
-                maskCtx.moveTo(lastEraser.x - imgX, lastEraser.y - imgY);
-                maskCtx.lineTo(x - imgX, y - imgY);
+                maskCtx.moveTo(lastImageCoordX, lastImageCoordY);
+                maskCtx.lineTo(imageCoordX, imageCoordY);
                 maskCtx.stroke();
                 maskCtx.closePath();
                 maskCtx.restore();
@@ -433,13 +441,19 @@
                 maskCtx.save();
                 maskCtx.globalCompositeOperation = 'destination-out';
                 maskCtx.beginPath();
-                maskCtx.arc(x - imgX, y - imgY, eraserSize / 2, 0, Math.PI * 2);
+                maskCtx.arc(
+                    imageCoordX,
+                    imageCoordY,
+                    eraserSize / 2,
+                    0,
+                    Math.PI * 2
+                );
                 maskCtx.fill();
                 maskCtx.restore();
             }
         }
     }
-    
+
     const draw = () => {
         if (!ctx) return;
 
