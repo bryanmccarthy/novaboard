@@ -4,15 +4,19 @@
 https://lucide.dev/icons/
 
 ## TODO
-- [ ] Drop image file
-- [ ] Paste image using clipboard
-- [ ] camera pan
-- [ ] camera zoom
-- [ ] image move
-- [ ] image resize
+- [x] Drop image file
+- [x] Paste image using clipboard
+- [x] camera pan
+- [x] camera zoom
+- [x] image move
+- [x] image resize
 - [ ] image rotate
-- [ ] image flip
+- [x] image flip
 - [ ] image crop
-- [ ] image erase
-- [ ] image copy
-- [ ] send/bring image to front/back
+- [x] image erase
+- [ ] image eraser size
+- [x] image copy
+- [x] send/bring image to front/back
+
+## Fix
+- [ ] image erase when resized
