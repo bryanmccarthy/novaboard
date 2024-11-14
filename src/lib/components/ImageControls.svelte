@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { images, selectedIndex, camera, zoom, imageControls } from '../store';
+    import { images, selectedIndex, camera, zoom, imageControls, eraserSize, cursor } from '../store';
     import type { Image, ImageControls } from '../types';
 
     let s: number | null;
@@ -17,6 +17,12 @@
     let imageControlsState: ImageControls;
     imageControls.subscribe(value => imageControlsState = value);
 
+    let eraserSizeState: number;
+    eraserSize.subscribe(value => eraserSizeState = value);
+
+    let cursorState: string;
+    cursor.subscribe(value => cursorState = value);
+
     let posX = 0;
     let posY = 0;
 
@@ -32,6 +38,8 @@
 
     const handleDuplicate = () => {
         if (s === null) return;
+        if (imageControlsState.erase) return;
+
         const image = imagesState[s];
         const mask = document.createElement('canvas');
         mask.width = image.width;
@@ -47,6 +55,8 @@
 
     const handleFlip = () => {
         if (s === null) return;
+        if (imageControlsState.erase) return;
+
         images.update(value => {
             const image = value[s as number];
             return value.map((img, index) => {
@@ -59,11 +69,14 @@
     }
 
     const handleRotate = () => {
-
+        if (s === null) return;
+        if (imageControlsState.erase) return;
     }
 
     const handleBringToFront = () => {
         if (s === null) return;
+        if (imageControlsState.erase) return;
+
         images.update(value => {
             const image = value[s as number];
             return value.filter((_, index) => index !== s).concat(image);
@@ -73,6 +86,8 @@
 
     const handleSendToBack = () => {
         if (s === null) return;
+        if (imageControlsState.erase) return;
+
         images.update(value => {
             const image = value[s as number];
             return [image].concat(value.filter((_, index) => index !== s));
@@ -84,8 +99,14 @@
         imageControls.update(value => ({ rotate: false, erase: !imageControlsState.erase }));
     }
 
+    const handleEraserSize = (e: Event) => {
+        eraserSize.update(value => parseInt((e.target as HTMLInputElement).value));
+    }
+
     const handleDelete = () => {
         if (s === null) return;
+        if (imageControlsState.erase) return;
+
         images.update(value => value.filter((_, index) => index !== s));
         selectedIndex.update(value => null);
         imageControls.update(value => ({ rotate: false, erase: false }));
@@ -149,5 +170,62 @@
     >
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
     </button>
+    <!-- Eraser Slider -->
+    {#if imageControlsState.erase}
+    <input
+        class="absolute"
+        id="slider"
+        style="left: {77}px; top: {-20}px;"
+        type="range" 
+        min="1" 
+        max="100" 
+        value={eraserSizeState} 
+        oninput={(e) => handleEraserSize(e)} 
+    />
+    {/if}
 </main>
 {/if}
+
+<style>
+    #slider {
+    -webkit-appearance: none;
+    appearance: none; 
+    width: 120px;
+    cursor: pointer;
+    outline: none;
+    overflow: hidden;
+    border-radius: 16px;
+    }
+
+    #slider::-webkit-slider-runnable-track {
+    height: 15px;
+    background: #0a0a0a;
+    border-radius: 16px;
+    }
+
+    #slider::-moz-range-track {
+    height: 15px;
+    background: #0a0a0a;
+    border-radius: 16px;
+    }
+
+    #slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none; 
+    height: 15px;
+    width: 15px;
+    background-color: #0a0a0a;
+    border-radius: 50%;
+    border: 2px solid #fafafa;
+    box-shadow: -407px 0 0 400px #0a0a0a;
+    }
+
+    #slider::-moz-range-thumb {
+    height: 15px;
+    width: 15px;
+    background-color: #fff;
+    border-radius: 50%;
+    border: 1px solid #fafafa;
+    box-shadow: -407px 0 0 400px #0a0a0a;
+    }
+</style>

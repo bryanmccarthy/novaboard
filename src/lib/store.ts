@@ -18,3 +18,5 @@ export const imageControls = writable<ImageControls>({
 
 export const camera = writable<{ x: number, y: number }>({ x: 0, y: 0 });
 export const zoom = writable<number>(1);
+
+export const eraserSize = writable<number>(20);

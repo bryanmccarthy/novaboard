@@ -1,12 +1,15 @@
 <script lang="ts">
-    import { cursor, controls, camera, zoom } from '../store';
-    import type { Controls } from '../types';
+    import { cursor, controls, imageControls, camera, zoom } from '../store';
+    import type { Controls, ImageControls } from '../types';
 
     let c: string;
     cursor.subscribe(value => c = value);
 
     let controlsState: Controls;
     controls.subscribe(value => controlsState = value);
+
+    let imageControlsState: ImageControls;
+    imageControls.subscribe(value => imageControlsState = value);
 
     let cameraState: { x: number, y: number };
     camera.subscribe(value => cameraState = value);
@@ -22,6 +25,8 @@
     }
 
     const togglePan = () => {
+        if (imageControlsState.erase) return;
+
         if (controlsState.pan) {
             cursor.update(() => "cursor-default");
             controls.update(() => ({ drag: false, pan: false }));

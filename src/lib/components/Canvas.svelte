@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { selectedIndex, images, cursor, controls, imageControls, camera, zoom } from '../store';
+    import { selectedIndex, images, cursor, controls, imageControls, camera, zoom, eraserSize } from '../store';
     import type { Image, Actions, Controls, ImageControls } from '../types';
     import { scale } from 'svelte/transition';
 
@@ -35,6 +35,9 @@
 
     let resizeHandle: string | null = null;
     const resizeRadius = 6;
+
+    let eraserSizeState: number;
+    eraserSize.subscribe(value => eraserSizeState = value);
 
     onMount(() => {
         ctx = canvas.getContext('2d');
@@ -406,7 +409,6 @@
         const imgY = image.y;
         const imgWidth = image.width;
         const imgHeight = image.height;
-        const eraserSize = 10; // TODO: make dynamic
 
         if (x >= imgX && x <= imgX + imgWidth && y >= imgY && y <= imgY + imgHeight) {
             const maskCtx = image.mask.getContext('2d');
@@ -429,7 +431,7 @@
             if (lastImageCoordX !== null && lastImageCoordY !== null) {
                 maskCtx.save();
                 maskCtx.globalCompositeOperation = 'destination-out';
-                maskCtx.lineWidth = eraserSize;
+                maskCtx.lineWidth = eraserSizeState;
                 maskCtx.lineCap = 'round';
                 maskCtx.beginPath();
                 maskCtx.moveTo(lastImageCoordX, lastImageCoordY);
@@ -438,14 +440,13 @@
                 maskCtx.closePath();
                 maskCtx.restore();
             } else {
-                console.log('erasing dot');
                 maskCtx.save();
                 maskCtx.globalCompositeOperation = 'destination-out';
                 maskCtx.beginPath();
                 maskCtx.arc(
                     imageCoordX,
                     imageCoordY,
-                    eraserSize / 2,
+                    eraserSizeState / 2,
                     0,
                     Math.PI * 2
                 );
