@@ -39,6 +39,9 @@
     let eraserSizeState: number;
     eraserSize.subscribe(value => eraserSizeState = value);
 
+    let mouseX = 0;
+    let mouseY = 0;
+
     onMount(() => {
         ctx = canvas.getContext('2d');
         if (!ctx) {
@@ -47,6 +50,12 @@
 
         createNewImage("src/assets/frieren.jpg", 200, 200); // TODO: remove
         createNewImage("src/assets/lain.png", 50, 50); // TODO: remove
+
+        // event listener for mouseX and mouseY
+        window.addEventListener('mousemove', (event) => {
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        });
 
         handleSize();
     });
@@ -372,7 +381,7 @@
             newImage.mask.height = newImage.height;
             const maskCtx = newImage.mask.getContext('2d');
             if (maskCtx) {
-                maskCtx.fillStyle = 'red';
+                maskCtx.fillStyle = 'white';
                 maskCtx.fillRect(0, 0, newImage.width, newImage.height);
             }
 
@@ -408,21 +417,16 @@
                 }
             }
 
+            maskCtx.save();
+            maskCtx.globalCompositeOperation = 'destination-out';
+            maskCtx.beginPath();
             if (lastImageCoordX !== null && lastImageCoordY !== null) {
-                maskCtx.save();
-                maskCtx.globalCompositeOperation = 'destination-out';
                 maskCtx.lineWidth = eraserSizeState;
                 maskCtx.lineCap = 'round';
-                maskCtx.beginPath();
                 maskCtx.moveTo(lastImageCoordX, lastImageCoordY);
                 maskCtx.lineTo(imageCoordX, imageCoordY);
                 maskCtx.stroke();
-                maskCtx.closePath();
-                maskCtx.restore();
             } else {
-                maskCtx.save();
-                maskCtx.globalCompositeOperation = 'destination-out';
-                maskCtx.beginPath();
                 maskCtx.arc(
                     imageCoordX,
                     imageCoordY,
@@ -431,8 +435,9 @@
                     Math.PI * 2
                 );
                 maskCtx.fill();
-                maskCtx.restore();
             }
+            maskCtx.closePath();
+            maskCtx.restore();
         }
     }
 
@@ -479,10 +484,21 @@
             ctx.strokeRect(image.x, image.y, image.width, image.height);
         }
 
-        // draw (0,0) center point
-        ctx.beginPath();
-        ctx.arc(0, 0, 5, 0, 2 * Math.PI);
-        ctx.fill();
+        if (imageControlsState.erase) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(
+                (mouseX / zoomLevel + cameraState.x),
+                (mouseY / zoomLevel + cameraState.y),
+                eraserSizeState / 2,
+                0,
+                Math.PI * 2
+            );
+            ctx.strokeStyle = '#0a0a0a';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+        }
 
         ctx.restore(); // restore scale
         requestAnimationFrame(draw);
