@@ -377,6 +377,7 @@
             const newImage: Image = {
                 src: src,
                 img: img,
+                imgCanvas: document.createElement('canvas'),
                 x: x,
                 y: y,
                 width: img.width > 1400 ? img.width / 4 : img.width > 1000 ? img.width / 2 : img.width,
@@ -474,17 +475,15 @@
                 ctx.translate(-image.width, 0);
             }
 
-            const offScreenCanvas = document.createElement('canvas');
-            offScreenCanvas.width = image.width;
-            offScreenCanvas.height = image.height;
-            const offScreenCtx = offScreenCanvas.getContext('2d');
-
-            if (offScreenCtx) {
-                offScreenCtx.drawImage(image.img, 0, 0, image.width, image.height);
-                offScreenCtx.globalCompositeOperation = 'destination-in';
-                offScreenCtx.drawImage(image.mask, 0, 0, image.width, image.height);
-                ctx.drawImage(offScreenCanvas, 0, 0, image.width, image.height);
+            image.imgCanvas.width = image.width;
+            image.imgCanvas.height = image.height;
+            const imgCtx = image.imgCanvas.getContext('2d');
+            if (imgCtx) {
+                imgCtx.drawImage(image.img, 0, 0, image.width, image.height);
+                imgCtx.globalCompositeOperation = 'destination-in';
+                imgCtx.drawImage(image.mask, 0, 0, image.width, image.height);
             }
+            ctx.drawImage(image.imgCanvas, 0, 0, image.width, image.height);
 
             ctx.restore();
         });
@@ -503,7 +502,6 @@
         ctx.beginPath();
         ctx.arc(0, 0, 5, 0, 2 * Math.PI);
         ctx.fill();
-
 
         ctx.restore(); // restore scale
         requestAnimationFrame(draw);

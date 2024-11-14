@@ -1,6 +1,7 @@
 export type Image = {
     src: string;
     img: HTMLImageElement;
+    imgCanvas: HTMLCanvasElement;
     x: number;
     y: number;
     width: number;
