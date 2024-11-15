@@ -372,21 +372,12 @@
                 src: src,
                 img: img,
                 aspectRatio: img.width / img.height,
-                imgCanvas: document.createElement('canvas'),
                 x: x,
                 y: y,
                 width: img.width > 1400 ? img.width / 4 : img.width > 1000 ? img.width / 2 : img.width,
                 height: img.width > 1400 ? img.height / 4 : img.width > 1000 ? img.height / 2 : img.height,
                 flipped: false,
-                mask: document.createElement('canvas'),
             };
-            newImage.mask.width = newImage.width;
-            newImage.mask.height = newImage.height;
-            const maskCtx = newImage.mask.getContext('2d');
-            if (maskCtx) {
-                maskCtx.fillStyle = 'white';
-                maskCtx.fillRect(0, 0, newImage.width, newImage.height);
-            }
 
             images.update(value => [...value, newImage]);
         };
@@ -403,9 +394,6 @@
         const imgHeight = image.height;
 
         if (x >= imgX && x <= imgX + imgWidth && y >= imgY && y <= imgY + imgHeight) {
-            const maskCtx = image.mask.getContext('2d');
-            if (!maskCtx) return;
-
             let imageCoordX = x - imgX;
             let imageCoordY = y - imgY;
             let lastImageCoordX =
@@ -419,28 +407,6 @@
                     lastImageCoordX = imgWidth - lastImageCoordX;
                 }
             }
-
-            maskCtx.save();
-            maskCtx.globalCompositeOperation = 'destination-out';
-            maskCtx.beginPath();
-            if (lastImageCoordX !== null && lastImageCoordY !== null) {
-                maskCtx.lineWidth = eraserSizeState;
-                maskCtx.lineCap = 'round';
-                maskCtx.moveTo(lastImageCoordX, lastImageCoordY);
-                maskCtx.lineTo(imageCoordX, imageCoordY);
-                maskCtx.stroke();
-            } else {
-                maskCtx.arc(
-                    imageCoordX,
-                    imageCoordY,
-                    eraserSizeState / 2,
-                    0,
-                    Math.PI * 2
-                );
-                maskCtx.fill();
-            }
-            maskCtx.closePath();
-            maskCtx.restore();
         }
     }
 
@@ -464,15 +430,7 @@
                 ctx.translate(-image.width, 0);
             }
 
-            image.imgCanvas.width = image.width;
-            image.imgCanvas.height = image.height;
-            const imgCtx = image.imgCanvas.getContext('2d');
-            if (imgCtx) {
-                imgCtx.drawImage(image.img, 0, 0, image.width, image.height);
-                imgCtx.globalCompositeOperation = 'destination-in';
-                imgCtx.drawImage(image.mask, 0, 0, image.width, image.height);
-            }
-            ctx.drawImage(image.imgCanvas, 0, 0, image.width, image.height);
+            ctx.drawImage(image.img, 0, 0, image.width, image.height);
 
             ctx.restore();
         });

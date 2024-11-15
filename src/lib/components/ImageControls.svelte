@@ -41,12 +41,7 @@
         if (imageControlsState.erase) return;
 
         const image = imagesState[s];
-        const mask = image.mask.cloneNode(true) as HTMLCanvasElement; 
-        mask.width = image.width;
-        mask.height = image.height;
-        const maskCtx = mask.getContext('2d');
-        if (maskCtx) maskCtx.drawImage(image.mask, 0, 0);
-        images.update(value => value.concat({ ...image, x: image.x + 20, y: image.y + 20, mask: mask }));
+        images.update(value => value.concat({ ...image, x: image.x + 20, y: image.y + 20 }));
         selectedIndex.update(value => imagesState.length - 1);
     }
 
