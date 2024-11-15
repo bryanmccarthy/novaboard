@@ -1,6 +1,7 @@
 export type Image = {
     src: string;
     img: HTMLImageElement;
+    aspectRatio: number;
     imgCanvas: HTMLCanvasElement;
     x: number;
     y: number;

@@ -2,7 +2,6 @@
     import { onMount } from 'svelte';
     import { selectedIndex, images, cursor, controls, imageControls, camera, zoom, eraserSize } from '../store';
     import type { Image, Actions, Controls, ImageControls } from '../types';
-    import { scale } from 'svelte/transition';
 
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D | null;
@@ -34,7 +33,7 @@
     let lastEraser: { x: number | null, y: number | null } = { x: null, y: null };
 
     let resizeHandle: string | null = null;
-    const resizeRadius = 6;
+    const resizeRadius = 10;
 
     let eraserSizeState: number;
     eraserSize.subscribe(value => eraserSizeState = value);
@@ -172,23 +171,27 @@
             switch (resizeHandle) {
                 case "nw":
                 newWidth = Math.max(image.x + image.width - canvasX, 30);
-                newHeight = Math.max(image.y + image.height - canvasY, 30);
+                // newHeight = Math.max(image.y + image.height - canvasY, 30);
+                newHeight = newWidth / image.aspectRatio;
                 newX = image.x + image.width - newWidth;
                 newY = image.y + image.height - newHeight;
                 break;
                 case "ne":
                 newWidth = Math.max(canvasX - image.x, 30);
-                newHeight = Math.max(image.y + image.height - canvasY, 30);
+                // newHeight = Math.max(image.y + image.height - canvasY, 30);
+                newHeight = newWidth / image.aspectRatio;
                 newY = image.y + image.height - newHeight;
                 break;
                 case "sw":
                 newWidth = Math.max(image.x + image.width - canvasX, 30);
-                newHeight = Math.max(canvasY - image.y, 30);
+                // newHeight = Math.max(canvasY - image.y, 30);
+                newHeight = newWidth / image.aspectRatio;
                 newX = image.x + image.width - newWidth;
                 break;
                 case "se":
                 newWidth = Math.max(canvasX - image.x, 30);
-                newHeight = Math.max(canvasY - image.y, 30);
+                // newHeight = Math.max(canvasY - image.y, 30);
+                newHeight = newWidth / image.aspectRatio;
                 break;
             }
 
@@ -197,7 +200,7 @@
                 x: newX,
                 y: newY,
                 width: newWidth,
-                height: newHeight
+                height: newHeight,
             };
             images.update(() => updatedImages);
         }
@@ -368,6 +371,7 @@
             const newImage: Image = {
                 src: src,
                 img: img,
+                aspectRatio: img.width / img.height,
                 imgCanvas: document.createElement('canvas'),
                 x: x,
                 y: y,
