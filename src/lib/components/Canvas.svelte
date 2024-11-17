@@ -342,10 +342,6 @@
         }
     }
 
-    const isImageUrl = (url: string) => {
-        return /\.(jpeg|jpg|gif|png|svg|webp)$/.test(url);
-    }
-
     const createNewImage = (src: string, x: number, y: number) => {
         const img = new Image();
         img.src = src;
@@ -435,6 +431,37 @@
             const newImages = [...imgs];
             newImages[$selectedIndex as number] = image;
             return newImages;
+        });
+    }
+
+    const isImageUrl = (url: string) => {
+        return /\.(jpeg|jpg|gif|png|svg|webp)$/.test(url);
+    }
+
+    const exportImageAsDataURL = (image: Image): string => {
+        return image.canvas.toDataURL('image/png');
+    };
+
+    const exportImageAsBlob = (image: Image): Promise<Blob | null> => {
+        return new Promise((resolve) => {
+            image.canvas.toBlob((blob) => {
+                resolve(blob);
+            }, 'image/png');
+        });
+    };
+
+    const downloadSelectedImage = () => {
+        if ($selectedIndex === null) return;
+        const image = $images[$selectedIndex];
+        exportImageAsBlob(image).then((blob) => {
+            if (blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'exported-image.png';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
         });
     }
 
