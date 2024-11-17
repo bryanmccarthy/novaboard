@@ -1,33 +1,23 @@
 <script lang="ts">
     import { cursor, controls, imageControls, camera, zoom } from '../store';
-    import type { Controls, ImageControls } from '../types';
 
-    let c: string;
-    cursor.subscribe(value => c = value);
-
-    let controlsState: Controls;
-    controls.subscribe(value => controlsState = value);
-
-    let imageControlsState: ImageControls;
-    imageControls.subscribe(value => imageControlsState = value);
-
-    let cameraState: { x: number, y: number };
-    camera.subscribe(value => cameraState = value);
-
-    let zoomLevel: number;
-    zoom.subscribe(value => zoomLevel = value);
+    cursor.subscribe(value =>  value);
+    controls.subscribe(value => value);
+    imageControls.subscribe(value => value);
+    camera.subscribe(value => value);
+    zoom.subscribe(value => value);
 
     const toggleDrag = () => {
-        if (!controlsState.drag) {
+        if (!$controls.drag) {
             cursor.update(() => "cursor-default");
             controls.update(() => ({ drag: true, pan: false }));
         }
     }
 
     const togglePan = () => {
-        if (imageControlsState.erase) return;
+        if ($imageControls.erase) return;
 
-        if (controlsState.pan) {
+        if ($controls.pan) {
             cursor.update(() => "cursor-default");
             controls.update(() => ({ drag: false, pan: false }));
         } else {
@@ -41,22 +31,22 @@
         const canvasHeight = window.innerHeight;
         const canvasCenterX = canvasWidth / 2;
         const canvasCenterY = canvasHeight / 2;
-        const worldCenterX = cameraState.x + canvasCenterX / from;
-        const worldCenterY = cameraState.y + canvasCenterY / from;
+        const worldCenterX = $camera.x + canvasCenterX / from;
+        const worldCenterY = $camera.y + canvasCenterY / from;
         const newCameraX = worldCenterX - canvasCenterX / to;
         const newCameraY = worldCenterY - canvasCenterY / to;
         camera.update(() => ({ x: newCameraX, y: newCameraY }));
     }
 
     const zoomIn = () => {
-        if (zoomLevel >= 2) return;
-        adjustCameraForZoom(zoomLevel, zoomLevel + 0.1);
+        if ($zoom >= 2) return;
+        adjustCameraForZoom($zoom, $zoom + 0.1);
         zoom.update(value => value + 0.1);
     }
 
     const zoomOut = () => {
-        if (zoomLevel <= 0.2) return;
-        adjustCameraForZoom(zoomLevel, zoomLevel - 0.1);
+        if ($zoom <= 0.2) return;
+        adjustCameraForZoom($zoom, $zoom - 0.1);
         zoom.update(value => value - 0.1);
     }
 
@@ -72,14 +62,14 @@
 
 <main class="absolute bottom-0 left-1/2 transform -translate-x-1/2 flex justify-center items-center gap-1 border-2 border-black bg-neutral-900 m-4 rounded-full">
     <button
-        class={ controlsState.drag? "bg-neutral-50 p-1.5 rounded-full" : "bg-neutral-900 text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black" }
+        class={ $controls.drag? "bg-neutral-50 p-1.5 rounded-full" : "bg-neutral-900 text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black" }
         onclick={() => toggleDrag()}
         aria-label="Toggle Drag"
     >
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mouse-pointer-2"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/></svg>
     </button>
     <button 
-        class={ controlsState.pan? "bg-white p-1.5 rounded-full" : "bg-neutral-900 text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black" }
+        class={ $controls.pan? "bg-white p-1.5 rounded-full" : "bg-neutral-900 text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black" }
         onclick={() => togglePan()}
         aria-label="Toggle Pan"
     >
@@ -95,7 +85,7 @@
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-minus"><path d="M5 12h14"/></svg>
     </button>
     <div class="bg-neutral-900 text-white text-m">
-        {zoomLevel.toFixed(1)}x
+        {$zoom.toFixed(1)}x
     </div>
     <button
         class="bg-neutral-900 text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black"

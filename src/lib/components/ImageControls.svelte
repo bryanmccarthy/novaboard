@@ -1,58 +1,44 @@
 <script lang="ts">
     import { images, selectedIndex, camera, zoom, imageControls, eraserSize, cursor } from '../store';
-    import type { Image, ImageControls } from '../types';
 
-    let s: number | null;
-    selectedIndex.subscribe(value => s = value);
-
-    let imagesState: Image[];
-    images.subscribe(value => imagesState = value);
-
-    let cameraState: { x: number, y: number };
-    camera.subscribe(value => cameraState = value);
-
-    let zoomLevel: number;
-    zoom.subscribe(value => zoomLevel = value);
-
-    let imageControlsState: ImageControls;
-    imageControls.subscribe(value => imageControlsState = value);
-
-    let eraserSizeState: number;
-    eraserSize.subscribe(value => eraserSizeState = value);
-
-    let cursorState: string;
-    cursor.subscribe(value => cursorState = value);
+    selectedIndex.subscribe(value => value);
+    images.subscribe(value => value);
+    camera.subscribe(value => value);
+    zoom.subscribe(value => value);
+    imageControls.subscribe(value => value);
+    eraserSize.subscribe(value => value);
+    cursor.subscribe(value => value);
 
     let posX = 0;
     let posY = 0;
 
-    $: if (s !== null && imagesState[s]) {
-        const image = imagesState[s];
-        const imageScreenX = (image.x - cameraState.x) * zoomLevel;
-        const imageScreenY = (image.y - cameraState.y) * zoomLevel;
-        const imageScreenWidth = image.width * zoomLevel;
+    $: if ($selectedIndex !== null && $images[$selectedIndex]) {
+        const image = $images[$selectedIndex];
+        const imageScreenX = (image.x - $camera.x) * $zoom;
+        const imageScreenY = (image.y - $camera.y) * $zoom;
+        const imageScreenWidth = image.width * $zoom;
 
         posX = imageScreenX + imageScreenWidth / 2 - 100;
         posY = imageScreenY - 35;
     }
 
     const handleDuplicate = () => {
-        if (s === null) return;
-        if (imageControlsState.erase) return;
+        if ($selectedIndex === null) return;
+        if ($imageControls.erase) return;
 
-        const image = imagesState[s];
+        const image = $images[$selectedIndex];
         images.update(value => value.concat({ ...image, x: image.x + 20, y: image.y + 20 }));
-        selectedIndex.update(value => imagesState.length - 1);
+        selectedIndex.update(value => $images.length - 1);
     }
 
     const handleFlip = () => {
-        if (s === null) return;
-        if (imageControlsState.erase) return;
+        if ($selectedIndex === null) return;
+        if ($imageControls.erase) return;
 
         images.update(value => {
-            const image = value[s as number];
+            const image = value[$selectedIndex as number];
             return value.map((img, index) => {
-                if (index === s) {
+                if (index === $selectedIndex) {
                     return { ...img, flipped: !img.flipped };
                 }
                 return img;
@@ -61,34 +47,34 @@
     }
 
     const handleRotate = () => {
-        if (s === null) return;
-        if (imageControlsState.erase) return;
+        if ($selectedIndex === null) return;
+        if ($imageControls.erase) return;
     }
 
     const handleBringToFront = () => {
-        if (s === null) return;
-        if (imageControlsState.erase) return;
+        if ($selectedIndex === null) return;
+        if ($imageControls.erase) return;
 
         images.update(value => {
-            const image = value[s as number];
-            return value.filter((_, index) => index !== s).concat(image);
+            const image = value[$selectedIndex as number];
+            return value.filter((_, index) => index !== $selectedIndex).concat(image);
         });
-        selectedIndex.update(value => imagesState.length - 1);
+        selectedIndex.update(value => $images.length - 1);
     }
 
     const handleSendToBack = () => {
-        if (s === null) return;
-        if (imageControlsState.erase) return;
+        if ($selectedIndex === null) return;
+        if ($imageControls.erase) return;
 
         images.update(value => {
-            const image = value[s as number];
-            return [image].concat(value.filter((_, index) => index !== s));
+            const image = value[$selectedIndex as number];
+            return [image].concat(value.filter((_, index) => index !== $selectedIndex));
         });
         selectedIndex.update(value => 0);
     }
 
     const handleEraser = () => {
-        imageControls.update(value => ({ rotate: false, erase: !imageControlsState.erase }));
+        imageControls.update(value => ({ rotate: false, erase: !$imageControls.erase }));
         cursor.update(() => "cursor-crosshair");
     }
 
@@ -97,16 +83,16 @@
     }
 
     const handleDelete = () => {
-        if (s === null) return;
-        if (imageControlsState.erase) return;
+        if ($selectedIndex === null) return;
+        if ($imageControls.erase) return;
 
-        images.update(value => value.filter((_, index) => index !== s));
+        images.update(value => value.filter((_, index) => index !== $selectedIndex));
         selectedIndex.update(value => null);
         imageControls.update(value => ({ rotate: false, erase: false }));
     }
 </script>
 
-{#if s !== null && imagesState[s]}
+{#if $selectedIndex !== null && $images[$selectedIndex]}
 <main 
     class="absolute z-10 w-[200px] flex items-center justify-center border-2 border-black bg-neutral-900 rounded-full"
     style="
@@ -150,7 +136,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send-to-back"><rect x="14" y="14" width="8" height="8" rx="2"/><rect x="2" y="2" width="8" height="8" rx="2"/><path d="M7 14v1a2 2 0 0 0 2 2h1"/><path d="M14 7h1a2 2 0 0 1 2 2v1"/></svg>
     </button>
     <button
-        class={`p-1.5 rounded-full hover:bg-neutral-50 hover:text-black ${imageControlsState.erase ? 'bg-neutral-50 text-neutral-900' : 'bg-neutral-900 text-neutral-50'}`}
+        class={`p-1.5 rounded-full hover:bg-neutral-50 hover:text-black ${$imageControls.erase ? 'bg-neutral-50 text-neutral-900' : 'bg-neutral-900 text-neutral-50'}`}
         onclick={() => handleEraser()}
         aria-label="Eraser"
     >
@@ -164,7 +150,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
     </button>
     <!-- Eraser Slider -->
-    {#if imageControlsState.erase}
+    {#if $imageControls.erase}
     <input
         class="absolute"
         id="slider"
@@ -172,7 +158,7 @@
         type="range" 
         min="1" 
         max="100" 
-        value={eraserSizeState} 
+        value={$eraserSize} 
         oninput={(e) => handleEraserSize(e)} 
     />
     {/if}

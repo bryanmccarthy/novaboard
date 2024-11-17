@@ -1,43 +1,25 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { selectedIndex, images, cursor, controls, imageControls, camera, zoom, eraserSize } from '../store';
-    import type { Image, Actions, Controls, ImageControls } from '../types';
+    import type { Image, Actions } from '../types';
 
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D | null;
 
-    let s: number | null;
-    selectedIndex.subscribe(value => s = value);
-
-    let imagesState: Image[];
-    images.subscribe(value => imagesState = value);
-
-    let cameraState: { x: number, y: number };
-    camera.subscribe(value => cameraState = value);
+    selectedIndex.subscribe(value => value);
+    images.subscribe(value => value);
+    camera.subscribe(value => value);
+    cursor.subscribe(value => value);
+    controls.subscribe(value => value);
+    imageControls.subscribe(value => value);
+    zoom.subscribe(value => value);
+    eraserSize.subscribe(value => value);
 
     let actions: Actions = { panning: false, dragging: false, resizing: false, erasing: false };
     let draggingOffset: { x: number, y: number } = { x: 0, y: 0 };
-
-    let cursorState: string;
-    cursor.subscribe(value => cursorState = value);
-
-    let controlsState: Controls;
-    controls.subscribe(value => controlsState = value);
-
-    let imageControlsState: ImageControls;
-    imageControls.subscribe(value => imageControlsState = value);
-
-    let zoomLevel: number;
-    zoom.subscribe(value => zoomLevel = value);
-
     let lastEraser: { x: number | null, y: number | null } = { x: null, y: null };
-
     let resizeHandle: string | null = null;
-    const resizeRadius = 10;
-
-    let eraserSizeState: number;
-    eraserSize.subscribe(value => eraserSizeState = value);
-
+    let resizeRadius = 10;
     let mouseX = 0;
     let mouseY = 0;
 
@@ -60,26 +42,26 @@
     });
 
     const handleMouseDown = (event: MouseEvent) => {
-        let canvasX = event.clientX / zoomLevel + cameraState.x;
-        let canvasY = event.clientY / zoomLevel + cameraState.y;
+        let canvasX = event.clientX / $zoom + $camera.x;
+        let canvasY = event.clientY / $zoom + $camera.y;
 
         // check for image erasing
-        if (imageControlsState.erase) {
+        if ($imageControls.erase) {
             actions = { panning: false, dragging: false, resizing: false, erasing: true };
             eraseAt(canvasX, canvasY, lastEraser);
             return;
         }
 
         // check for image panning
-        if (controlsState.pan) {
+        if ($controls.pan) {
             cursor.update(() => "cursor-grabbing");
             actions = { panning: true, dragging: false, resizing: false, erasing: false };
             return;
         }
 
         // check for image resize
-        if (s !== null) {
-            const image = imagesState[s];
+        if ($selectedIndex !== null) {
+            const image = $images[$selectedIndex];
             if (
                 canvasX >= image.x - resizeRadius && canvasX <= image.x + resizeRadius &&
                 canvasY >= image.y - resizeRadius && canvasY <= image.y + resizeRadius
@@ -113,8 +95,8 @@
 
         // check for image drag
         let found = false;
-        for (let i = imagesState.length - 1; i >= 0; i--) {
-            const image = imagesState[i];
+        for (let i = $images.length - 1; i >= 0; i--) {
+            const image = $images[i];
             if (
                 canvasX >= image.x &&
                 canvasX <= image.x + image.width &&
@@ -135,8 +117,8 @@
     }
 
     const handleMouseMove = (event: MouseEvent) => {
-        let canvasX = event.clientX / zoomLevel + cameraState.x;
-        let canvasY = event.clientY / zoomLevel + cameraState.y;
+        let canvasX = event.clientX / $zoom + $camera.x;
+        let canvasY = event.clientY / $zoom + $camera.y;
 
         if (actions.erasing) {
             eraseAt(canvasX, canvasY, lastEraser);
@@ -144,14 +126,14 @@
         }
 
         if (actions.panning) {
-            camera.update(value => ({ x: value.x - event.movementX / zoomLevel, y: value.y - event.movementY / zoomLevel }));
+            camera.update(value => ({ x: value.x - event.movementX / $zoom, y: value.y - event.movementY / $zoom }));
         }
 
         if (actions.dragging) {
-            if (s === null) return;
-            const image = imagesState[s];
-            const updatedImages = [...imagesState];
-            updatedImages[s] = {
+            if ($selectedIndex === null) return;
+            const image = $images[$selectedIndex];
+            const updatedImages = [...$images];
+            updatedImages[$selectedIndex] = {
                 ...image,
                 x: canvasX - draggingOffset.x,
                 y: canvasY - draggingOffset.y
@@ -160,9 +142,9 @@
         }
 
         if (actions.resizing) {
-            if (s === null) return;
-            const image = imagesState[s];
-            const updatedImages = [...imagesState];
+            if ($selectedIndex === null) return;
+            const image = $images[$selectedIndex];
+            const updatedImages = [...$images];
             let newX = image.x;
             let newY = image.y;
             let newWidth = image.width;
@@ -195,7 +177,7 @@
                 break;
             }
 
-            updatedImages[s] = {
+            updatedImages[$selectedIndex] = {
                 ...image,
                 x: newX,
                 y: newY,
@@ -206,8 +188,8 @@
         }
 
         // if mouse is over a resize handle, change cursor
-        if (s !== null && !controlsState.pan && !imageControlsState.erase) {
-            const image = imagesState[s];
+        if ($selectedIndex !== null && !$controls.pan && !$imageControls.erase) {
+            const image = $images[$selectedIndex];
             if (
                 canvasX >= image.x - resizeRadius && canvasX <= image.x + resizeRadius &&
                 canvasY >= image.y - resizeRadius && canvasY <= image.y + resizeRadius
@@ -229,13 +211,13 @@
             ) {
                 cursor.update(() => "cursor-nwse-resize");
             } else {
-                if (!imageControlsState.erase) cursor.update(() => "cursor-default");
+                if (!$imageControls.erase) cursor.update(() => "cursor-default");
             }
         }
     }
 
     const handleMouseUp = (event: MouseEvent) => {
-        if (controlsState.pan) {
+        if ($controls.pan) {
             cursor.update(() => "cursor-grab");
         }
 
@@ -249,11 +231,11 @@
     const handleWheel = (event: WheelEvent) => {
         event.preventDefault();
 
-        camera.update(value => ({ x: value.x + event.deltaX / zoomLevel, y: value.y + event.deltaY / zoomLevel }));
+        camera.update(value => ({ x: value.x + event.deltaX / $zoom, y: value.y + event.deltaY / $zoom }));
 
         // TODO: check if issues
-        // if (controlsState.pan) {
-        //     camera.update(value => ({ x: value.x + event.deltaX / zoomLevel, y: value.y + event.deltaY / zoomLevel }));
+        // if ($controls.pan) {
+        //     $camera.update(value => ({ x: value.x + event.deltaX / $zoom, y: value.y + event.deltaY / $zoom }));
         //     return;
         // }
     }
@@ -276,7 +258,7 @@
         const file = files[0];
         const reader = new FileReader();
         reader.onload = (e) => {
-            createNewImage(e.target?.result as string, event.clientX / zoomLevel + cameraState.x, event.clientY / zoomLevel + cameraState.y);
+            createNewImage(e.target?.result as string, event.clientX / $zoom + $camera.x, event.clientY / $zoom + $camera.y);
         }
         reader.readAsDataURL(file);
     }
@@ -286,8 +268,8 @@
         const canvasHeight = window.innerHeight;
         const canvasCenterX = canvasWidth / 2;
         const canvasCenterY = canvasHeight / 2;
-        const worldCenterX = cameraState.x + canvasCenterX / from;
-        const worldCenterY = cameraState.y + canvasCenterY / from;
+        const worldCenterX = $camera.x + canvasCenterX / from;
+        const worldCenterY = $camera.y + canvasCenterY / from;
         const newCameraX = worldCenterX - canvasCenterX / to;
         const newCameraY = worldCenterY - canvasCenterY / to;
         camera.update(() => ({ x: newCameraX, y: newCameraY }));
@@ -299,18 +281,18 @@
         }
 
         if (event.key === 'ArrowUp') {
-            if (zoomLevel >= 2) return;
-            adjustCameraForZoom(zoomLevel, zoomLevel + 0.1);
+            if ($zoom >= 2) return;
+            adjustCameraForZoom($zoom, $zoom + 0.1);
             zoom.update(value => value + 0.1);
         } else if (event.key === 'ArrowDown') {
-            if (zoomLevel <= 0.2) return;
-            adjustCameraForZoom(zoomLevel, zoomLevel - 0.1);
+            if ($zoom <= 0.2) return;
+            adjustCameraForZoom($zoom, $zoom - 0.1);
             zoom.update(value => value - 0.1);
         }
 
         if (event.key === 'Delete' || event.key === 'Backspace') {
-            if (s === null) return;
-            images.update(value => value.filter((_, i) => i !== s));
+            if ($selectedIndex === null) return;
+            images.update(value => value.filter((_, i) => i !== $selectedIndex));
             selectedIndex.update(() => null);
             imageControls.update(() => ({ rotate: false, erase: false }));
         }
@@ -318,8 +300,8 @@
 
     // TODO: fix copy to clipboard -- check with https 
     const copyImageToClipboard = async () => {
-        if (s !== null && navigator.clipboard && navigator.clipboard.write) {
-            const image = imagesState[s];
+        if ($selectedIndex !== null && navigator.clipboard && navigator.clipboard.write) {
+            const image = $images[$selectedIndex];
 
             const offscreenCanvas = document.createElement('canvas');
             offscreenCanvas.width = image.width;
@@ -397,8 +379,8 @@
     }
 
     const eraseAt = (x: number, y: number, lastEraser: { x: number | null; y: number | null }) => {
-        if (s === null) return;
-        const image = $images[s];
+        if ($selectedIndex === null) return;
+        const image = $images[$selectedIndex];
 
         const imgX = image.x;
         const imgY = image.y;
@@ -422,7 +404,7 @@
 
             ctx.globalCompositeOperation = 'destination-out';
             ctx.strokeStyle = 'rgba(0,0,0,1)';
-            ctx.lineWidth = eraserSizeState * scaleX; 
+            ctx.lineWidth = $eraserSize * scaleX; 
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
 
@@ -433,20 +415,27 @@
                 ctx.lineTo(imageCoordX, imageCoordY);
                 ctx.stroke();
             } else {
-                // If no last position, draw a single point 
-                ctx.arc(imageCoordX, imageCoordY, (eraserSizeState * scaleX) / 2, 0, Math.PI * 2);
+                ctx.arc(imageCoordX, imageCoordY, ($eraserSize * scaleX) / 2, 0, Math.PI * 2);
                 ctx.fill();
             }
             ctx.restore();
 
-            // Update lastEraser position
             lastEraser.x = x;
             lastEraser.y = y;
         } else {
-            // If the current point is outside the image, reset lastEraser
             lastEraser.x = null;
             lastEraser.y = null;
         }
+
+        // After modifying the canvas, update the imageData
+        const updatedImageData = image.ctx.getImageData(0, 0, image.canvas.width, image.canvas.height);
+        image.imageData = updatedImageData;
+
+        images.update((imgs) => {
+            const newImages = [...imgs];
+            newImages[$selectedIndex as number] = image;
+            return newImages;
+        });
     }
 
     const draw = () => {
@@ -455,11 +444,11 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         ctx.save();
-        ctx.scale(zoomLevel, zoomLevel);
-        ctx.translate(-cameraState.x, -cameraState.y);
+        ctx.scale($zoom, $zoom);
+        ctx.translate(-$camera.x, -$camera.y);
 
         // draw images
-        imagesState.forEach(image => {
+        $images.forEach(image => {
             if (!ctx) return;
             ctx.save();
             ctx.translate(image.x, image.y);
@@ -474,23 +463,23 @@
             ctx.restore();
         });
 
-        if (s !== null) {
+        if ($selectedIndex !== null) {
             // draw selected image border 
-            const image = imagesState[s];
+            const image = $images[$selectedIndex];
             ctx.strokeStyle = '#000';
-            if (zoomLevel <= 0.8) ctx.lineWidth = 3;
-            else if (zoomLevel >= 1.2) ctx.lineWidth = 1;
+            if ($zoom <= 0.8) ctx.lineWidth = 3;
+            else if ($zoom >= 1.2) ctx.lineWidth = 1;
             else ctx.lineWidth = 2;
             ctx.strokeRect(image.x, image.y, image.width, image.height);
         }
 
-        if (imageControlsState.erase) {
+        if ($imageControls.erase) {
             ctx.save();
             ctx.beginPath();
             ctx.arc(
-                (mouseX / zoomLevel + cameraState.x),
-                (mouseY / zoomLevel + cameraState.y),
-                eraserSizeState / 2,
+                (mouseX / $zoom + $camera.x),
+                (mouseY / $zoom + $camera.y),
+                $eraserSize / 2,
                 0,
                 Math.PI * 2
             );
@@ -508,7 +497,7 @@
 <svelte:window on:resize={handleSize} on:paste={handlePaste} on:keydown={handleKeyDown} />
 
 <canvas
-    class="relative bg-neutral-50 {cursorState}"
+    class="relative bg-neutral-50 {$cursor}"
     id="canvas" 
     bind:this={canvas}
     onmousemove={handleMouseMove}
@@ -521,7 +510,7 @@
 </canvas>
 
 <!-- TODO: experiment with backgrounds -->
- <!-- style:--dot-size={zoomLevel <= 0.6 ? '1.6px' : zoomLevel >= 1.3 ? '0.8px' : `${1/zoomLevel}px`} -->
+ <!-- style:--dot-size={$zoom <= 0.6 ? '1.6px' : $zoom >= 1.3 ? '0.8px' : `${1/$zoom}px`} -->
 
 <style>
     /* #canvas {
