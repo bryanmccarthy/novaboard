@@ -10,13 +10,10 @@ https://lucide.dev/icons/
 - [x] camera zoom
 - [x] image move
 - [x] image resize
-- [ ] image rotate
 - [x] image flip
-- [ ] image crop
 - [x] image erase
-- [ ] image eraser size
+- [x] image eraser size
 - [x] image copy
 - [x] send/bring image to front/back
-
-## Fix
-- [ ] image erase when resized
+- [ ] image rotate
+- [ ] image crop

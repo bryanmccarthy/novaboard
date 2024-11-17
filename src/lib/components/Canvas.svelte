@@ -465,6 +465,26 @@
         });
     }
 
+    const exportCanvasAsImage = () => {
+        if (!canvas) {
+            console.warn('Canvas element is not available.');
+            return;
+        }
+
+        canvas.toBlob((blob) => {
+            if (blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'novaboard.png';
+                a.click();
+                URL.revokeObjectURL(url);
+            } else {
+                console.error('Failed to export canvas as image.');
+            }
+        }, 'image/png');
+    };
+
     const draw = () => {
         if (!ctx) return;
 
