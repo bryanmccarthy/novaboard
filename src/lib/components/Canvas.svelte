@@ -368,9 +368,22 @@
         const img = new Image();
         img.src = src;
         img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            ctx.drawImage(img, 0, 0);
+            const imageData = ctx.getImageData(0, 0, img.width, img.height);
+
+            console.log('Image loaded:', imageData);
+
             const newImage: Image = {
                 src: src,
                 img: img,
+                imageData: imageData,
+                canvas: canvas,
+                ctx: ctx,
                 aspectRatio: img.width / img.height,
                 x: x,
                 y: y,
@@ -385,8 +398,7 @@
 
     const eraseAt = (x: number, y: number, lastEraser: { x: number | null; y: number | null }) => {
         if (s === null) return;
-
-        const image = imagesState[s];
+        const image = $images[s];
 
         const imgX = image.x;
         const imgY = image.y;
@@ -394,19 +406,46 @@
         const imgHeight = image.height;
 
         if (x >= imgX && x <= imgX + imgWidth && y >= imgY && y <= imgY + imgHeight) {
-            let imageCoordX = x - imgX;
-            let imageCoordY = y - imgY;
-            let lastImageCoordX =
-                lastEraser.x !== null ? lastEraser.x - imgX : null;
-            let lastImageCoordY =
-                lastEraser.y !== null ? lastEraser.y - imgY : null;
+            // Convert canvas coordinates to image coordinates
+            const scaleX = image.canvas.width / imgWidth;
+            const scaleY = image.canvas.height / imgHeight;
 
-            if (image.flipped) {
-                imageCoordX = imgWidth - imageCoordX;
-                if (lastImageCoordX !== null) {
-                    lastImageCoordX = imgWidth - lastImageCoordX;
-                }
+            let imageCoordX = (x - imgX) * scaleX;
+            let imageCoordY = (y - imgY) * scaleY;
+
+            let lastImageCoordX = lastEraser.x !== null ? (lastEraser.x - imgX) * scaleX : null;
+            let lastImageCoordY = lastEraser.y !== null ? (lastEraser.y - imgY) * scaleY : null;
+
+            const ctx = image.ctx;
+
+            ctx.save();
+
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.strokeStyle = 'rgba(0,0,0,1)';
+            ctx.lineWidth = eraserSizeState * scaleX; 
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            ctx.beginPath();
+
+            if (lastImageCoordX !== null && lastImageCoordY !== null) {
+                ctx.moveTo(lastImageCoordX, lastImageCoordY);
+                ctx.lineTo(imageCoordX, imageCoordY);
+                ctx.stroke();
+            } else {
+                // If no last position, draw a single point 
+                ctx.arc(imageCoordX, imageCoordY, (eraserSizeState * scaleX) / 2, 0, Math.PI * 2);
+                ctx.fill();
             }
+            ctx.restore();
+
+            // Update lastEraser position
+            lastEraser.x = x;
+            lastEraser.y = y;
+        } else {
+            // If the current point is outside the image, reset lastEraser
+            lastEraser.x = null;
+            lastEraser.y = null;
         }
     }
 
@@ -430,7 +469,7 @@
                 ctx.translate(-image.width, 0);
             }
 
-            ctx.drawImage(image.img, 0, 0, image.width, image.height);
+            ctx.drawImage(image.canvas, 0, 0, image.width, image.height);
 
             ctx.restore();
         });
@@ -481,7 +520,7 @@
 >
 </canvas>
 
-<!-- TOOD: experiment with backgrounds -->
+<!-- TODO: experiment with backgrounds -->
  <!-- style:--dot-size={zoomLevel <= 0.6 ? '1.6px' : zoomLevel >= 1.3 ? '0.8px' : `${1/zoomLevel}px`} -->
 
 <style>
