@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
     import { selectedIndex, images, cursor, controls, imageControls, camera, zoom, eraserSize } from '../store';
     import type { Image, Actions } from '../types';
+    import { createNewImage } from '../utils/createImage';
 
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D | null;
@@ -230,14 +231,7 @@
 
     const handleWheel = (event: WheelEvent) => {
         event.preventDefault();
-
         camera.update(value => ({ x: value.x + event.deltaX / $zoom, y: value.y + event.deltaY / $zoom }));
-
-        // TODO: check if issues
-        // if ($controls.pan) {
-        //     $camera.update(value => ({ x: value.x + event.deltaX / $zoom, y: value.y + event.deltaY / $zoom }));
-        //     return;
-        // }
     }
 
     const handleSize = () => {
@@ -342,38 +336,6 @@
         }
     }
 
-    const createNewImage = (src: string, x: number, y: number) => {
-        const img = new Image();
-        img.src = src;
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return;
-            ctx.drawImage(img, 0, 0);
-            const imageData = ctx.getImageData(0, 0, img.width, img.height);
-
-            console.log('Image loaded:', imageData);
-
-            const newImage: Image = {
-                src: src,
-                img: img,
-                imageData: imageData,
-                canvas: canvas,
-                ctx: ctx,
-                aspectRatio: img.width / img.height,
-                x: x,
-                y: y,
-                width: img.width > 1400 ? img.width / 4 : img.width > 1000 ? img.width / 2 : img.width,
-                height: img.width > 1400 ? img.height / 4 : img.width > 1000 ? img.height / 2 : img.height,
-                flipped: false,
-            };
-
-            images.update(value => [...value, newImage]);
-        };
-    }
-
     const eraseAt = (x: number, y: number, lastEraser: { x: number | null; y: number | null }) => {
         if ($selectedIndex === null) return;
         const image = $images[$selectedIndex];
@@ -389,9 +351,11 @@
             const scaleY = image.canvas.height / imgHeight;
 
             let imageCoordX = (x - imgX) * scaleX;
+            if (image.flipped) imageCoordX = image.canvas.width - imageCoordX;
             let imageCoordY = (y - imgY) * scaleY;
 
             let lastImageCoordX = lastEraser.x !== null ? (lastEraser.x - imgX) * scaleX : null;
+            if (image.flipped) lastImageCoordX = lastImageCoordX !== null ? image.canvas.width - lastImageCoordX : null;
             let lastImageCoordY = lastEraser.y !== null ? (lastEraser.y - imgY) * scaleY : null;
 
             const ctx = image.ctx;
@@ -485,6 +449,20 @@
         }, 'image/png');
     };
 
+    const drawSelectionBorder = (image: Image, ctx: CanvasRenderingContext2D) => {
+        ctx.save();
+        const centerX = image.x + image.width / 2;
+        const centerY = image.y + image.height / 2;
+        ctx.translate(centerX, centerY);
+
+        // Draw selection rectangle centered at (0, 0)
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2 / $zoom;
+        ctx.strokeRect(-image.width / 2 - 2, -image.height / 2 - 2, image.width + 4, image.height + 4);
+
+        ctx.restore();
+    };
+
     const draw = () => {
         if (!ctx) return;
 
@@ -498,26 +476,28 @@
         $images.forEach(image => {
             if (!ctx) return;
             ctx.save();
-            ctx.translate(image.x, image.y);
+            // ctx.translate(image.x, image.y);
+
+            // Move to the center of the image
+            const centerX = image.x + image.width / 2;
+            const centerY = image.y + image.height / 2;
+            ctx.translate(centerX, centerY);
 
             if (image.flipped) {
                 ctx.scale(-1, 1);
-                ctx.translate(-image.width, 0);
+                // ctx.translate(-image.width, 0);
             }
 
-            ctx.drawImage(image.canvas, 0, 0, image.width, image.height);
+            // ctx.drawImage(image.canvas, 0, 0, image.width, image.height);
+            // Draw the image centered at (0, 0)
+            ctx.drawImage(image.canvas, -image.width / 2, -image.height / 2, image.width, image.height);
 
             ctx.restore();
         });
 
         if ($selectedIndex !== null) {
-            // draw selected image border 
             const image = $images[$selectedIndex];
-            ctx.strokeStyle = '#000';
-            if ($zoom <= 0.8) ctx.lineWidth = 3;
-            else if ($zoom >= 1.2) ctx.lineWidth = 1;
-            else ctx.lineWidth = 2;
-            ctx.strokeRect(image.x, image.y, image.width, image.height);
+            drawSelectionBorder(image, ctx);
         }
 
         if ($imageControls.erase) {

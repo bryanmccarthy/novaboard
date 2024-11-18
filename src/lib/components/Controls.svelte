@@ -60,7 +60,7 @@
 
 </script>
 
-<main class="absolute bottom-0 left-1/2 transform -translate-x-1/2 flex justify-center items-center gap-1 border-2 border-black bg-neutral-900 m-4 rounded-full">
+<main class="absolute bottom-0 left-1/2 transform -translate-x-1/2 flex justify-center items-center gap-1 border-2 border-neutral-900 bg-neutral-900 m-4 rounded-full">
     <button
         class={ $controls.drag? "bg-neutral-50 p-1.5 rounded-full" : "bg-neutral-900 text-white p-1.5 rounded-full hover:bg-neutral-50 hover:text-black" }
         onclick={() => toggleDrag()}

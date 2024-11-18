@@ -26,6 +26,5 @@ export type Controls = {
 }
 
 export type ImageControls = {
-    rotate: boolean;
     erase: boolean;
 }

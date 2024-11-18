@@ -1,5 +1,7 @@
 <script lang="ts">
     import { images, selectedIndex, camera, zoom, imageControls, eraserSize, cursor } from '../store';
+    import type { Image } from '../types';
+    import { createNewImage } from '../utils/createImage';
 
     selectedIndex.subscribe(value => value);
     images.subscribe(value => value);
@@ -27,8 +29,37 @@
         if ($imageControls.erase) return;
 
         const image = $images[$selectedIndex];
-        images.update(value => value.concat({ ...image, x: image.x + 20, y: image.y + 20 }));
-        selectedIndex.update(value => $images.length - 1);
+
+        const img = new Image();
+        img.src = image.src;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            ctx.drawImage(image.canvas, 0, 0);
+            const imageData = ctx.getImageData(0, 0, img.width, img.height);
+
+            console.log('Image loaded:', imageData);
+
+            const newImage: Image = {
+                src: image.src,
+                img: img,
+                imageData: imageData,
+                canvas: canvas,
+                ctx: ctx,
+                aspectRatio: img.width / img.height,
+                x: image.x + 30,
+                y: image.y + 30,
+                width: img.width > 1400 ? img.width / 4 : img.width > 1000 ? img.width / 2 : img.width,
+                height: img.width > 1400 ? img.height / 4 : img.width > 1000 ? img.height / 2 : img.height,
+                flipped: image.flipped,
+            };
+
+            images.update(value => [...value, newImage]);
+            selectedIndex.update(value => $images.length - 1);
+        };
     }
 
     const handleFlip = () => {
@@ -94,7 +125,7 @@
 
 {#if $selectedIndex !== null && $images[$selectedIndex]}
 <main 
-    class="absolute z-10 w-[200px] flex items-center justify-center border-2 border-black bg-neutral-900 rounded-full"
+    class="absolute z-10 w-[200px] flex items-center justify-center border-2 border-neutral-900 bg-neutral-900 rounded-full"
     style="
         left: {posX}px;
         top: {posY}px;
